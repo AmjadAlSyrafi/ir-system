@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IR Search Engine</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <h1>IR Search Engine</h1>
+      <nav>
+        <button class="tab-btn active" data-tab="search">Search</button>
+        <button class="tab-btn" data-tab="evaluate">Evaluate</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ERROR BANNER -->
+  <div id="error-banner" class="error-banner hidden">
+    <span id="error-text"></span>
+    <button onclick="dismissError()" aria-label="Dismiss">✕</button>
+  </div>
+
+  <!-- SEARCH TAB -->
+  <main id="tab-search" class="tab-content active">
+    <div class="search-card">
+
+      <div class="search-controls">
+        <select id="dataset-select" title="Dataset">
+          <option value="dataset1">Dataset 1 — MS MARCO</option>
+          <option value="dataset2">Dataset 2 — NQ</option>
+        </select>
+
+        <select id="model-select" title="Model">
+          <option value="bm25">BM25</option>
+          <option value="tfidf">TF-IDF</option>
+          <option value="embedding">BERT Embeddings</option>
+          <option value="hybrid_serial">Hybrid (Serial)</option>
+          <option value="hybrid_parallel">Hybrid (Parallel)</option>
+        </select>
+
+        <div class="search-bar">
+          <input type="text" id="query-input" placeholder="Type your search query…" autocomplete="off" />
+          <button id="search-btn">
+            <span id="search-btn-text">Search</span>
+            <span id="search-spinner" class="spinner hidden"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="search-options">
+        <label class="checkbox-label">
+          <input type="checkbox" id="use-refinement" checked />
+          Use Query Refinement
+        </label>
+      </div>
+
+      <!-- BM25 sliders (shown only when model=bm25) -->
+      <div id="bm25-params" class="bm25-params hidden">
+        <div class="slider-row">
+          <label for="bm25-k1">k1 <span class="param-desc">(term freq saturation)</span></label>
+          <div class="slider-control">
+            <input type="range" id="bm25-k1" min="0.5" max="3.0" step="0.1" value="1.5" />
+            <span id="bm25-k1-val" class="slider-value">1.5</span>
+          </div>
+        </div>
+        <div class="slider-row">
+          <label for="bm25-b">b <span class="param-desc">(length normalization)</span></label>
+          <div class="slider-control">
+            <input type="range" id="bm25-b" min="0.0" max="1.0" step="0.05" value="0.75" />
+            <span id="bm25-b-val" class="slider-value">0.75</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Refinement info banner -->
+      <div id="refinement-banner" class="refinement-banner hidden"></div>
+
+      <!-- Results meta -->
+      <div id="results-meta" class="results-meta hidden"></div>
+
+      <!-- Results list -->
+      <div id="results-container"></div>
+    </div>
+  </main>
+
+  <!-- EVALUATE TAB -->
+  <main id="tab-evaluate" class="tab-content hidden">
+    <div class="card">
+      <h2>Model Evaluation</h2>
+
+      <div class="eval-controls">
+        <div class="form-group">
+          <label>Dataset</label>
+          <select id="eval-dataset">
+            <option value="dataset1">Dataset 1 — MS MARCO</option>
+            <option value="dataset2">Dataset 2 — NQ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Models to evaluate</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label"><input type="checkbox" value="bm25" checked /> BM25</label>
+            <label class="checkbox-label"><input type="checkbox" value="tfidf" /> TF-IDF</label>
+            <label class="checkbox-label"><input type="checkbox" value="embedding" /> BERT Embeddings</label>
+            <label class="checkbox-label"><input type="checkbox" value="hybrid_serial" /> Hybrid (Serial)</label>
+            <label class="checkbox-label"><input type="checkbox" value="hybrid_parallel" /> Hybrid (Parallel)</label>
+          </div>
+        </div>
+        <button id="eval-btn">
+          <span id="eval-btn-text">Run Evaluation</span>
+          <span id="eval-spinner" class="spinner hidden"></span>
+        </button>
+      </div>
+
+      <div id="eval-results" class="hidden">
+        <h3>Results</h3>
+        <div class="table-wrapper">
+          <table id="eval-table">
+            <thead>
+              <tr>
+                <th>Model</th><th>MAP</th><th>Recall</th><th>P@10</th><th>nDCG@10</th>
+              </tr>
+            </thead>
+            <tbody id="eval-table-body"></tbody>
+          </table>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="eval-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- SETTINGS TAB -->
+  <main id="tab-settings" class="tab-content hidden">
+    <div class="card">
+      <h2>Settings</h2>
+
+      <div class="settings-group">
+        <h3>Preprocessing</h3>
+        <label class="toggle-label">
+          <span>Stemming</span>
+          <div class="toggle">
+            <input type="checkbox" id="setting-stemming" />
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="toggle-label">
+          <span>Lemmatization</span>
+          <div class="toggle">
+            <input type="checkbox" id="setting-lemmatization" />
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <label class="toggle-label">
+          <span>Stopword Removal</span>
+          <div class="toggle">
+            <input type="checkbox" id="setting-stopwords" checked />
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <h3>Results</h3>
+        <div class="slider-row">
+          <label for="setting-topk">Number of results</label>
+          <div class="slider-control">
+            <input type="range" id="setting-topk" min="5" max="50" step="5" value="10" />
+            <span id="setting-topk-val" class="slider-value">10</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="save-settings-btn">Save Settings</button>
+      <div id="settings-status" class="settings-status hidden">Settings saved.</div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+nltk
+spacy
+numpy
+pandas
+python-dotenv
+pydantic
+httpx

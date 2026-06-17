@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+ir-datasets
+scikit-learn
+numpy
+pandas
+python-dotenv
+pydantic
+httpx

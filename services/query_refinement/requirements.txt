@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+nltk
+spacy
+transformers
+torch
+numpy
+python-dotenv
+pydantic
+httpx

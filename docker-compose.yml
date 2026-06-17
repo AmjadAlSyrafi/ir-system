@@ -1,0 +1,132 @@
+version: "3.9"
+
+x-common: &common
+  restart: unless-stopped
+  env_file: .env
+  volumes:
+    - ./data:/data
+
+services:
+
+  preprocessing:
+    <<: *common
+    build:
+      context: ./services/preprocessing
+      dockerfile: ../../Dockerfile.service
+    image: ir-system/preprocessing
+    ports:
+      - "${PREPROCESSING_PORT:-8001}:8001"
+    environment:
+      - PREPROCESSING_PORT=8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  indexing:
+    <<: *common
+    build:
+      context: ./services/indexing
+      dockerfile: ../../Dockerfile.service
+    image: ir-system/indexing
+    ports:
+      - "${INDEXING_PORT:-8002}:8002"
+    environment:
+      - INDEXING_PORT=8002
+      - INDEX_STORAGE_PATH=/data/indexes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  retrieval:
+    <<: *common
+    build:
+      context: ./services/retrieval
+      dockerfile: ../../Dockerfile.service
+    image: ir-system/retrieval
+    ports:
+      - "${RETRIEVAL_PORT:-8003}:8003"
+    environment:
+      - RETRIEVAL_PORT=8003
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sentence-transformers/msmarco-distilbert-base-v4}
+      - INDEX_STORAGE_PATH=/data/indexes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  query_refinement:
+    <<: *common
+    build:
+      context: ./services/query_refinement
+      dockerfile: ../../Dockerfile.service
+    image: ir-system/query_refinement
+    ports:
+      - "${QUERY_REFINEMENT_PORT:-8005}:8005"
+    environment:
+      - QUERY_REFINEMENT_PORT=8005
+      - HISTORY_FILE=/data/query_history.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  evaluation:
+    <<: *common
+    build:
+      context: ./services/evaluation
+      dockerfile: ../../Dockerfile.service
+    image: ir-system/evaluation
+    ports:
+      - "${EVALUATION_PORT:-8006}:8006"
+    environment:
+      - EVALUATION_PORT=8006
+      - REPORT_PATH=/data/evaluation_report.md
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  api_gateway:
+    <<: *common
+    build:
+      context: ./services/api_gateway
+      dockerfile: ../../Dockerfile.service
+    image: ir-system/api_gateway
+    ports:
+      - "${API_GATEWAY_PORT:-8000}:8000"
+    environment:
+      - API_GATEWAY_PORT=8000
+      - PREPROCESSING_URL=http://preprocessing:8001
+      - INDEXING_URL=http://indexing:8002
+      - RETRIEVAL_URL=http://retrieval:8003
+      - QUERY_REFINEMENT_URL=http://query_refinement:8005
+      - EVALUATION_URL=http://evaluation:8006
+    depends_on:
+      preprocessing:
+        condition: service_healthy
+      indexing:
+        condition: service_healthy
+      retrieval:
+        condition: service_healthy
+      query_refinement:
+        condition: service_healthy
+      evaluation:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

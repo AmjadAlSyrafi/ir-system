@@ -15,7 +15,7 @@ import ir_datasets
 logger = logging.getLogger(__name__)
 
 DATASET_ALIASES: Dict[str, str] = {
-    "dataset1": "msmarco-passage",
+    "dataset1": "msmarco-passage/dev/small",
     "dataset2": "beir/nq/train",
 }
 

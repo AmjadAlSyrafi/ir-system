@@ -1,0 +1,117 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "IR: preprocessing (8001)",
+            "type": "shell",
+            "command": "python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload",
+            "options": { "cwd": "${workspaceFolder}/services/preprocessing" },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "ir-services",
+                "panel": "dedicated",
+                "reveal": "always",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "IR: indexing (8002)",
+            "type": "shell",
+            "command": "python -m uvicorn main:app --host 0.0.0.0 --port 8002 --reload",
+            "options": { "cwd": "${workspaceFolder}/services/indexing" },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "ir-services",
+                "panel": "dedicated",
+                "reveal": "always",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "IR: retrieval (8003)",
+            "type": "shell",
+            "command": "python -m uvicorn main:app --host 0.0.0.0 --port 8003 --reload",
+            "options": { "cwd": "${workspaceFolder}/services/retrieval" },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "ir-services",
+                "panel": "dedicated",
+                "reveal": "always",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "IR: query_refinement (8005)",
+            "type": "shell",
+            "command": "python -m uvicorn main:app --host 0.0.0.0 --port 8005 --reload",
+            "options": { "cwd": "${workspaceFolder}/services/query_refinement" },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "ir-services",
+                "panel": "dedicated",
+                "reveal": "always",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "IR: evaluation (8006)",
+            "type": "shell",
+            "command": "python -m uvicorn main:app --host 0.0.0.0 --port 8006 --reload",
+            "options": { "cwd": "${workspaceFolder}/services/evaluation" },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "ir-services",
+                "panel": "dedicated",
+                "reveal": "always",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "IR: api_gateway (8000)",
+            "type": "shell",
+            "command": "python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+            "options": { "cwd": "${workspaceFolder}/services/api_gateway" },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "ir-services",
+                "panel": "dedicated",
+                "reveal": "always",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "IR System: Start All Services",
+            "dependsOn": [
+                "IR: preprocessing (8001)",
+                "IR: indexing (8002)",
+                "IR: retrieval (8003)",
+                "IR: query_refinement (8005)",
+                "IR: evaluation (8006)",
+                "IR: api_gateway (8000)"
+            ],
+            "dependsOrder": "parallel",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "IR System: Stop All Services",
+            "type": "shell",
+            "command": "powershell -ExecutionPolicy Bypass -File ${workspaceFolder}/scripts/stop_all.ps1",
+            "presentation": {
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "problemMatcher": []
+        }
+    ]
+}

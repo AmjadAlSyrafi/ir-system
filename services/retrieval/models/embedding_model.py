@@ -364,7 +364,9 @@ class EmbeddingModel:
     def _require_model(self) -> None:
         if self._model is None:
             raise RuntimeError(
-                "Model not loaded. Call load_model() first."
+                "Embedding model is still initializing. "
+                "Please wait a moment and try again, "
+                "or use the 'bm25' or 'tfidf' model instead."
             )
 
     def _require_index(self) -> None:

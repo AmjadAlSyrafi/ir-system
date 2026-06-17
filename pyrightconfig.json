@@ -1,0 +1,10 @@
+{
+  "extraPaths": [
+    "services/preprocessing",
+    "services/indexing",
+    "services/retrieval",
+    "services/evaluation"
+  ],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "basic"
+}

@@ -1,0 +1,32 @@
+{
+  "user1": [
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "passage retrieval benchmark evaluation",
+    "who invented the telephone",
+    "passage retrieval benchmark evaluation",
+    "passage retrieval benchmark evaluation",
+    "passage retrieval benchmark evaluation"
+  ],
+  "default": [
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms",
+    "information retrieval ranking algorithms"
+  ],
+  "demo_user": [
+    "What are the best ranking algorithms for document retrieval?",
+    "What are the best ranking algorithms for document retrieval?"
+  ]
+}

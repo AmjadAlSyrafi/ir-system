@@ -18,19 +18,23 @@ import sys
 import time
 from typing import Dict, List
 
-# Add service directories to path so we can import directly.
-_ROOT = os.path.dirname(__file__)
+# Add service directories to sys.path so local modules are importable.
+# NOTE: retrieval/models uses relative imports (from .bm25_model import …),
+# so we must expose the *parent* directory (services/retrieval) and import
+# the models as a package (models.tfidf_model etc.), NOT add models/ directly.
+_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_ROOT, "services", "preprocessing"))
 sys.path.insert(0, os.path.join(_ROOT, "services", "indexing"))
-sys.path.insert(0, os.path.join(_ROOT, "services", "retrieval", "models"))
+sys.path.insert(0, os.path.join(_ROOT, "services", "retrieval"))   # <-- parent, not models/
+sys.path.insert(0, os.path.join(_ROOT, "services", "evaluation"))
 
-from dataset_loader import DatasetLoader          # noqa: E402
-from preprocessor import TextPreprocessor         # noqa: E402
-from indexer import InvertedIndex                 # noqa: E402
-from tfidf_model import TFIDFModel                # noqa: E402
-from bm25_model import BM25Model                  # noqa: E402
-from embedding_model import EmbeddingModel        # noqa: E402
-from hybrid_model import HybridModel              # noqa: E402
+from dataset_loader import DatasetLoader               # noqa: E402
+from preprocessor import TextPreprocessor              # noqa: E402
+from indexer import InvertedIndex                      # noqa: E402
+from models.tfidf_model import TFIDFModel              # noqa: E402
+from models.bm25_model import BM25Model                # noqa: E402
+from models.embedding_model import EmbeddingModel      # noqa: E402
+from models.hybrid_model import HybridModel            # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -154,13 +158,13 @@ def _run_evaluation(
     dataset_name: str,
     dataset_tag: str,
     models: Dict,
+    corpus_doc_ids: set,
     loader: DatasetLoader,
     preprocessor: TextPreprocessor,
     k: int = 10,
     max_queries: int = 100,
 ) -> str:
     """Run all models against qrels, produce a Markdown report, return its path."""
-    # Delayed import to avoid circular deps at module top.
     sys.path.insert(0, os.path.join(_ROOT, "services", "evaluation"))
     from metrics import IREvaluator  # noqa: E402
 
@@ -171,22 +175,40 @@ def _run_evaluation(
         logger.warning("No qrels available for '%s': %s", dataset_name, exc)
         return ""
 
-    logger.info("[%s] Running evaluation on up to %d queries…", dataset_tag, max_queries)
-    evaluator = IREvaluator(qrels)
+    logger.info("[%s] Loading query texts…", dataset_tag)
+    try:
+        query_texts = {q["query_id"]: q["text"] for q in loader.load_queries(dataset_name)}
+    except ValueError as exc:
+        logger.warning("[%s] No queries available: %s", dataset_tag, exc)
+        return ""
 
-    # Build results for each model over the available queries.
-    query_ids = list(qrels.keys())[:max_queries]
+    # Only evaluate queries that have real text AND at least one relevant doc
+    # present in the sampled corpus — ensures metrics are non-trivially meaningful.
+    valid_ids = [
+        qid for qid, rel_docs in qrels.items()
+        if qid in query_texts and any(did in corpus_doc_ids for did in rel_docs)
+    ]
+    if not valid_ids:
+        logger.warning(
+            "[%s] No queries with relevant docs in the sampled corpus; skipping evaluation.", dataset_tag
+        )
+        return ""
+
+    logger.info(
+        "[%s] %d queries have relevant docs in corpus; evaluating up to %d.",
+        dataset_tag, len(valid_ids), max_queries,
+    )
+    query_ids = valid_ids[:max_queries]
+    evaluator = IREvaluator(qrels)
     model_results: Dict[str, Dict] = {name: {} for name in models}
 
     for query_id in query_ids:
-        # Load and preprocess the query text (use query_id as surrogate text
-        # when actual text is unavailable — real deployments would fetch it).
-        query_text = query_id  # placeholder; replace with real query lookup
+        query_text   = query_texts[query_id]
         query_tokens = preprocessor.preprocess(query_text)
 
         for name, model in models.items():
             try:
-                if name in ("tfidf",):
+                if name == "tfidf":
                     results = model.search(query_tokens, top_k=k)
                 elif name == "bm25":
                     results = model.search(query_tokens, top_k=k)
@@ -196,7 +218,9 @@ def _run_evaluation(
                     results = model.search(query_text, query_tokens, top_k=k)
                 model_results[name][query_id] = results
             except Exception as exc:
-                logger.warning("[%s] %s search failed for query '%s': %s", dataset_tag, name, query_id, exc)
+                logger.warning(
+                    "[%s] %s search failed for query '%s': %s", dataset_tag, name, query_id, exc
+                )
                 model_results[name][query_id] = []
 
     df = evaluator.compare_models(model_results, k=k)
@@ -287,7 +311,8 @@ def main() -> None:
             models = _fit_and_save_models(dataset_tag, documents)
 
         # Evaluation
-        _run_evaluation(dataset_name, dataset_tag, models, loader, preprocessor)
+        corpus_doc_ids = {d["doc_id"] for d in documents}
+        _run_evaluation(dataset_name, dataset_tag, models, corpus_doc_ids, loader, preprocessor)
 
     print("\nPipeline complete.")
 

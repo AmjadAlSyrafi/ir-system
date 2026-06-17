@@ -279,6 +279,17 @@ tr:last-child td { border-bottom: none; }
 
 .chart-wrapper { margin-top: 1.5rem; max-height: 300px; }
 
+.eval-progress {
+  margin-top: .75rem;
+  padding: .5rem .9rem;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  font-size: .85rem;
+  color: #3730a3;
+  font-style: italic;
+}
+
 /* ── Settings Tab ─────────────────────────────────────────────────────────── */
 .settings-group { margin-bottom: 1.5rem; }
 .settings-group h3 { font-size: .95rem; font-weight: 700; color: var(--navy); margin-bottom: .75rem; border-bottom: 1px solid var(--border); padding-bottom: .35rem; }

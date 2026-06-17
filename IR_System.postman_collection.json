@@ -1,0 +1,816 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "IR Search Engine",
+    "description": "Complete API test collection for the Information Retrieval System.\n\nServices:\n- API Gateway      → http://localhost:8000\n- Preprocessing    → http://localhost:8001\n- Indexing         → http://localhost:8002\n- Retrieval        → http://localhost:8003\n- Query Refinement → http://localhost:8005\n- Evaluation       → http://localhost:8006\n\nImport the companion environment file 'IR_System.postman_environment.json' first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+
+    {
+      "name": "🌐 API Gateway  :8000",
+      "description": "Central entry point — orchestrates all services.",
+      "item": [
+
+        {
+          "name": "Health — All Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway_url}}/health",
+              "host": ["{{gateway_url}}"],
+              "path": ["health"]
+            },
+            "description": "Pings every downstream service and returns their status. Overall status is 'ok' only if all services are healthy."
+          },
+          "response": []
+        },
+
+        {
+          "name": "List Datasets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway_url}}/datasets",
+              "host": ["{{gateway_url}}"],
+              "path": ["datasets"]
+            },
+            "description": "Returns available datasets: dataset1 (MS MARCO) and dataset2 (NQ)."
+          },
+          "response": []
+        },
+
+        {
+          "name": "List Models",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway_url}}/models",
+              "host": ["{{gateway_url}}"],
+              "path": ["models"]
+            },
+            "description": "Returns all supported retrieval models."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Search — BM25",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"information retrieval ranking algorithms\",\n  \"dataset\": \"dataset1\",\n  \"model\": \"bm25\",\n  \"top_k\": 10,\n  \"use_refinement\": true,\n  \"user_id\": \"user1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["search"]
+            },
+            "description": "BM25 search with query refinement enabled on MS MARCO dataset."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Search — BM25 Custom k1 & b",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"document retrieval scoring\",\n  \"dataset\": \"dataset1\",\n  \"model\": \"bm25\",\n  \"top_k\": 10,\n  \"use_refinement\": false,\n  \"bm25_k1\": 2.0,\n  \"bm25_b\": 0.5\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["search"]
+            },
+            "description": "BM25 with custom k1=2.0 (higher term freq saturation) and b=0.5 (reduced length normalization)."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Search — TF-IDF",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"vector space model cosine similarity\",\n  \"dataset\": \"dataset1\",\n  \"model\": \"tfidf\",\n  \"top_k\": 10,\n  \"use_refinement\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["search"]
+            },
+            "description": "TF-IDF Vector Space Model search on MS MARCO."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Search — BERT Embeddings",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"how do search engines work\",\n  \"dataset\": \"dataset1\",\n  \"model\": \"embedding\",\n  \"top_k\": 10,\n  \"use_refinement\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["search"]
+            },
+            "description": "Dense semantic search using sentence-transformers + FAISS."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Search — Hybrid Parallel (RRF Fusion)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"passage retrieval benchmark evaluation\",\n  \"dataset\": \"dataset1\",\n  \"model\": \"hybrid_parallel\",\n  \"top_k\": 10,\n  \"use_refinement\": true,\n  \"user_id\": \"user1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["search"]
+            },
+            "description": "BM25 + TF-IDF + Embedding results fused with Reciprocal Rank Fusion."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Search — Hybrid Serial (BM25 → Re-rank)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"natural language question answering\",\n  \"dataset\": \"dataset2\",\n  \"model\": \"hybrid_serial\",\n  \"top_k\": 10,\n  \"use_refinement\": false\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["search"]
+            },
+            "description": "Two-stage pipeline: BM25 fetches 100 candidates, embeddings re-rank them. Uses NQ dataset."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Search — Dataset 2 (NQ)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"who invented the telephone\",\n  \"dataset\": \"dataset2\",\n  \"model\": \"bm25\",\n  \"top_k\": 5,\n  \"use_refinement\": true,\n  \"user_id\": \"user1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["search"]
+            },
+            "description": "BM25 search on the Natural Questions dataset."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Build Index for Dataset",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataset\": \"dataset1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/index/build",
+              "host": ["{{gateway_url}}"],
+              "path": ["index", "build"]
+            },
+            "description": "Triggers the indexing service to build all indexes for the given dataset."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Evaluate Model",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_name\": \"bm25_gateway_test\",\n  \"dataset\": \"dataset1\",\n  \"k\": 10,\n  \"qrels\": [\n    {\"query_id\": \"q1\", \"doc_id\": \"d1\", \"relevance\": 1},\n    {\"query_id\": \"q1\", \"doc_id\": \"d3\", \"relevance\": 1},\n    {\"query_id\": \"q2\", \"doc_id\": \"d2\", \"relevance\": 2},\n    {\"query_id\": \"q2\", \"doc_id\": \"d4\", \"relevance\": 1}\n  ],\n  \"results_per_query\": {\n    \"q1\": [\n      {\"doc_id\": \"d1\", \"score\": 0.92, \"rank\": 1},\n      {\"doc_id\": \"d2\", \"score\": 0.81, \"rank\": 2},\n      {\"doc_id\": \"d3\", \"score\": 0.74, \"rank\": 3}\n    ],\n    \"q2\": [\n      {\"doc_id\": \"d2\", \"score\": 0.88, \"rank\": 1},\n      {\"doc_id\": \"d5\", \"score\": 0.61, \"rank\": 2},\n      {\"doc_id\": \"d4\", \"score\": 0.55, \"rank\": 3}\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/evaluate",
+              "host": ["{{gateway_url}}"],
+              "path": ["evaluate"]
+            },
+            "description": "Run evaluation metrics (MAP, Recall, P@k, nDCG@k) via the gateway."
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "⚙️ Preprocessing Service  :8001",
+      "description": "Tokenisation, stopword removal, stemming and lemmatisation.",
+      "item": [
+
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{preprocessing_url}}/health",
+              "host": ["{{preprocessing_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Preprocess Single Document",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doc_id\": \"doc001\",\n  \"text\": \"Information retrieval systems retrieve relevant documents from large text collections using ranking algorithms like BM25 and TF-IDF.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{preprocessing_url}}/preprocess/document",
+              "host": ["{{preprocessing_url}}"],
+              "path": ["preprocess", "document"]
+            },
+            "description": "Returns doc_id, original text, token list, and processed_text string."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Preprocess Query",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_text\": \"How do search engines rank and retrieve documents?\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{preprocessing_url}}/preprocess/query",
+              "host": ["{{preprocessing_url}}"],
+              "path": ["preprocess", "query"]
+            },
+            "description": "Returns original query, token list, and processed_text."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Preprocess Batch (3 Documents)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documents\": [\n    {\n      \"doc_id\": \"d1\",\n      \"text\": \"BM25 is a probabilistic retrieval function based on term frequency and inverse document frequency.\"\n    },\n    {\n      \"doc_id\": \"d2\",\n      \"text\": \"TF-IDF measures how important a word is to a document in a collection or corpus.\"\n    },\n    {\n      \"doc_id\": \"d3\",\n      \"text\": \"Dense retrieval uses neural networks to encode queries and documents into dense vector representations.\"\n    }\n  ],\n  \"n_jobs\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{preprocessing_url}}/preprocess/batch",
+              "host": ["{{preprocessing_url}}"],
+              "path": ["preprocess", "batch"]
+            },
+            "description": "Preprocesses multiple documents in parallel. n_jobs=-1 uses all CPU cores."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Preprocess Batch (n_jobs = -1, Parallel)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documents\": [\n    {\"doc_id\": \"d1\", \"text\": \"Inverted index stores a mapping from terms to the documents containing them.\"},\n    {\"doc_id\": \"d2\", \"text\": \"Precision measures the fraction of retrieved documents that are relevant.\"},\n    {\"doc_id\": \"d3\", \"text\": \"Recall measures the fraction of relevant documents that were retrieved.\"},\n    {\"doc_id\": \"d4\", \"text\": \"NDCG normalizes the discounted cumulative gain by the ideal ranking.\"},\n    {\"doc_id\": \"d5\", \"text\": \"Mean average precision averages precision over all recall levels.\"}\n  ],\n  \"n_jobs\": -1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{preprocessing_url}}/preprocess/batch",
+              "host": ["{{preprocessing_url}}"],
+              "path": ["preprocess", "batch"]
+            },
+            "description": "Parallel batch preprocessing using all available CPU cores."
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "📚 Indexing Service  :8002",
+      "description": "Inverted index build, postings lookup, save and load.",
+      "item": [
+
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{indexing_url}}/health",
+              "host": ["{{indexing_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Build Index",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documents\": [\n    {\"doc_id\": \"d1\", \"tokens\": [\"bm25\", \"retrieval\", \"ranking\", \"search\", \"probabilistic\"]},\n    {\"doc_id\": \"d2\", \"tokens\": [\"tfidf\", \"term\", \"frequency\", \"document\", \"weight\", \"search\"]},\n    {\"doc_id\": \"d3\", \"tokens\": [\"neural\", \"embedding\", \"dense\", \"vector\", \"semantic\", \"search\"]},\n    {\"doc_id\": \"d4\", \"tokens\": [\"inverted\", \"index\", \"postings\", \"term\", \"document\", \"retrieval\"]},\n    {\"doc_id\": \"d5\", \"tokens\": [\"precision\", \"recall\", \"ndcg\", \"map\", \"evaluation\", \"ranking\"]},\n    {\"doc_id\": \"d6\", \"tokens\": [\"query\", \"expansion\", \"synonym\", \"wordnet\", \"retrieval\"]},\n    {\"doc_id\": \"d7\", \"tokens\": [\"bert\", \"transformer\", \"language\", \"model\", \"search\", \"semantic\"]}\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{indexing_url}}/index/build",
+              "host": ["{{indexing_url}}"],
+              "path": ["index", "build"]
+            },
+            "description": "Builds the in-memory inverted index from pre-tokenised documents."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Index Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{indexing_url}}/index/stats",
+              "host": ["{{indexing_url}}"],
+              "path": ["index", "stats"]
+            },
+            "description": "Returns vocab_size, doc_count, avg_doc_length, total_terms."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Postings — 'search' (in 3 docs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{indexing_url}}/index/postings/search",
+              "host": ["{{indexing_url}}"],
+              "path": ["index", "postings", "search"]
+            },
+            "description": "Returns {doc_id: tf} for 'search'. Expected: d1, d2, d3, d7."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Postings — 'ranking' (in 2 docs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{indexing_url}}/index/postings/ranking",
+              "host": ["{{indexing_url}}"],
+              "path": ["index", "postings", "ranking"]
+            },
+            "description": "Returns {doc_id: tf} for 'ranking'. Expected: d1, d5."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Postings — 'xyz' (not in index)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{indexing_url}}/index/postings/xyz",
+              "host": ["{{indexing_url}}"],
+              "path": ["index", "postings", "xyz"]
+            },
+            "description": "Term not in vocabulary. Expected: empty dict {}."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Save Index to Disk",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{indexing_url}}/index/save",
+              "host": ["{{indexing_url}}"],
+              "path": ["index", "save"]
+            },
+            "description": "Serialises the current in-memory index to disk via pickle."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Load Index from Disk",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{indexing_url}}/index/load",
+              "host": ["{{indexing_url}}"],
+              "path": ["index", "load"]
+            },
+            "description": "Deserialises a previously saved index from disk."
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "🔍 Query Refinement Service  :8005",
+      "description": "Spell correction, synonym expansion, and history-based query boosting.",
+      "item": [
+
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{refinement_url}}/health",
+              "host": ["{{refinement_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Refine — Spell Correction",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"informaton retreival systms\",\n  \"user_id\": \"user1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{refinement_url}}/refine",
+              "host": ["{{refinement_url}}"],
+              "path": ["refine"]
+            },
+            "description": "Spell-corrects 'informaton retreival systms'. Changes_made will show corrections."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Refine — Synonym Expansion",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"search engine ranking\",\n  \"user_id\": \"user1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{refinement_url}}/refine",
+              "host": ["{{refinement_url}}"],
+              "path": ["refine"]
+            },
+            "description": "Expands nouns/verbs with WordNet synonyms. Run this twice — second time gets history boost."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Refine — History Boost (run after above)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"search ranking\",\n  \"user_id\": \"user1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{refinement_url}}/refine",
+              "host": ["{{refinement_url}}"],
+              "path": ["refine"]
+            },
+            "description": "Shorter query that overlaps with previous history entry. History boost adds missing terms if Jaccard > 0.5."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Refine — Misspelled IR Query",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"inverted indx and postings lst\",\n  \"user_id\": \"user2\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{refinement_url}}/refine",
+              "host": ["{{refinement_url}}"],
+              "path": ["refine"]
+            },
+            "description": "Corrects 'indx' → 'index' and 'lst' → 'list'."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Query History — user1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{refinement_url}}/history/user1",
+              "host": ["{{refinement_url}}"],
+              "path": ["history", "user1"]
+            },
+            "description": "Returns all past queries for user1 (oldest first)."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Clear Query History — user1",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{refinement_url}}/history/user1",
+              "host": ["{{refinement_url}}"],
+              "path": ["history", "user1"]
+            },
+            "description": "Deletes all history entries for user1."
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "📊 Evaluation Service  :8006",
+      "description": "Precision@k, Recall@k, AP, MAP, nDCG@k metrics and comparison reports.",
+      "item": [
+
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{evaluation_url}}/health",
+              "host": ["{{evaluation_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+
+        {
+          "name": "Evaluate Single Model",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_name\": \"bm25\",\n  \"k\": 10,\n  \"qrels\": [\n    {\"query_id\": \"q1\", \"doc_id\": \"d1\", \"relevance\": 1},\n    {\"query_id\": \"q1\", \"doc_id\": \"d3\", \"relevance\": 1},\n    {\"query_id\": \"q2\", \"doc_id\": \"d2\", \"relevance\": 2},\n    {\"query_id\": \"q2\", \"doc_id\": \"d4\", \"relevance\": 1},\n    {\"query_id\": \"q3\", \"doc_id\": \"d5\", \"relevance\": 1},\n    {\"query_id\": \"q3\", \"doc_id\": \"d6\", \"relevance\": 1}\n  ],\n  \"results_per_query\": {\n    \"q1\": [\n      {\"doc_id\": \"d1\", \"score\": 0.92, \"rank\": 1},\n      {\"doc_id\": \"d2\", \"score\": 0.81, \"rank\": 2},\n      {\"doc_id\": \"d3\", \"score\": 0.74, \"rank\": 3},\n      {\"doc_id\": \"d4\", \"score\": 0.60, \"rank\": 4}\n    ],\n    \"q2\": [\n      {\"doc_id\": \"d2\", \"score\": 0.88, \"rank\": 1},\n      {\"doc_id\": \"d5\", \"score\": 0.61, \"rank\": 2},\n      {\"doc_id\": \"d4\", \"score\": 0.55, \"rank\": 3}\n    ],\n    \"q3\": [\n      {\"doc_id\": \"d7\", \"score\": 0.70, \"rank\": 1},\n      {\"doc_id\": \"d5\", \"score\": 0.65, \"rank\": 2},\n      {\"doc_id\": \"d6\", \"score\": 0.58, \"rank\": 3}\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{evaluation_url}}/evaluate",
+              "host": ["{{evaluation_url}}"],
+              "path": ["evaluate"]
+            },
+            "description": "Returns MAP, mean_recall, mean_precision_at_k, mean_ndcg_at_k and per-query breakdown."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Compare Multiple Models",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"k\": 10,\n  \"qrels\": [\n    {\"query_id\": \"q1\", \"doc_id\": \"d1\", \"relevance\": 1},\n    {\"query_id\": \"q1\", \"doc_id\": \"d3\", \"relevance\": 1},\n    {\"query_id\": \"q2\", \"doc_id\": \"d2\", \"relevance\": 2},\n    {\"query_id\": \"q2\", \"doc_id\": \"d4\", \"relevance\": 1}\n  ],\n  \"model_results\": {\n    \"bm25\": {\n      \"q1\": [\n        {\"doc_id\": \"d1\", \"score\": 0.92, \"rank\": 1},\n        {\"doc_id\": \"d2\", \"score\": 0.81, \"rank\": 2},\n        {\"doc_id\": \"d3\", \"score\": 0.74, \"rank\": 3}\n      ],\n      \"q2\": [\n        {\"doc_id\": \"d2\", \"score\": 0.88, \"rank\": 1},\n        {\"doc_id\": \"d5\", \"score\": 0.61, \"rank\": 2},\n        {\"doc_id\": \"d4\", \"score\": 0.55, \"rank\": 3}\n      ]\n    },\n    \"tfidf\": {\n      \"q1\": [\n        {\"doc_id\": \"d3\", \"score\": 0.85, \"rank\": 1},\n        {\"doc_id\": \"d1\", \"score\": 0.79, \"rank\": 2},\n        {\"doc_id\": \"d5\", \"score\": 0.62, \"rank\": 3}\n      ],\n      \"q2\": [\n        {\"doc_id\": \"d4\", \"score\": 0.91, \"rank\": 1},\n        {\"doc_id\": \"d2\", \"score\": 0.77, \"rank\": 2},\n        {\"doc_id\": \"d1\", \"score\": 0.50, \"rank\": 3}\n      ]\n    },\n    \"embedding\": {\n      \"q1\": [\n        {\"doc_id\": \"d1\", \"score\": 0.95, \"rank\": 1},\n        {\"doc_id\": \"d3\", \"score\": 0.88, \"rank\": 2},\n        {\"doc_id\": \"d6\", \"score\": 0.71, \"rank\": 3}\n      ],\n      \"q2\": [\n        {\"doc_id\": \"d2\", \"score\": 0.93, \"rank\": 1},\n        {\"doc_id\": \"d4\", \"score\": 0.82, \"rank\": 2},\n        {\"doc_id\": \"d3\", \"score\": 0.60, \"rank\": 3}\n      ]\n    }\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{evaluation_url}}/compare",
+              "host": ["{{evaluation_url}}"],
+              "path": ["compare"]
+            },
+            "description": "Compares BM25, TF-IDF, and Embedding side-by-side. Also saves evaluation_report.md."
+          },
+          "response": []
+        },
+
+        {
+          "name": "Get Evaluation Report (Markdown)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{evaluation_url}}/report",
+              "host": ["{{evaluation_url}}"],
+              "path": ["report"]
+            },
+            "description": "Returns the Markdown report from the last /compare call. Run Compare first."
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "🤖 Retrieval Service  :8003",
+      "description": "Direct retrieval model endpoints (bypasses gateway).",
+      "item": [
+
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{retrieval_url}}/health",
+              "host": ["{{retrieval_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        }
+
+      ]
+    },
+
+    {
+      "name": "🔁 End-to-End Flow",
+      "description": "Run these requests in order (1→2→3→4) to simulate a complete search session.",
+      "item": [
+
+        {
+          "name": "1. Preprocess Query",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query_text\": \"What are the best ranking algorithms for document retrieval?\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{preprocessing_url}}/preprocess/query",
+              "host": ["{{preprocessing_url}}"],
+              "path": ["preprocess", "query"]
+            },
+            "description": "Step 1: Tokenise and clean the raw query."
+          },
+          "response": []
+        },
+
+        {
+          "name": "2. Refine Query",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"What are the best ranking algorithms for document retrieval?\",\n  \"user_id\": \"demo_user\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{refinement_url}}/refine",
+              "host": ["{{refinement_url}}"],
+              "path": ["refine"]
+            },
+            "description": "Step 2: Apply spell correction, synonym expansion, history boosting."
+          },
+          "response": []
+        },
+
+        {
+          "name": "3. Search with BM25 (via Gateway)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"What are the best ranking algorithms for document retrieval?\",\n  \"dataset\": \"dataset1\",\n  \"model\": \"bm25\",\n  \"top_k\": 10,\n  \"use_refinement\": true,\n  \"user_id\": \"demo_user\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{gateway_url}}/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["search"]
+            },
+            "description": "Step 3: Full pipeline search — gateway calls refinement + preprocessing + retrieval internally."
+          },
+          "response": []
+        },
+
+        {
+          "name": "4. Evaluate Results",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"model_name\": \"bm25_e2e\",\n  \"k\": 10,\n  \"qrels\": [\n    {\"query_id\": \"q_demo\", \"doc_id\": \"d1\", \"relevance\": 1},\n    {\"query_id\": \"q_demo\", \"doc_id\": \"d3\", \"relevance\": 1}\n  ],\n  \"results_per_query\": {\n    \"q_demo\": [\n      {\"doc_id\": \"d1\", \"score\": 0.92, \"rank\": 1},\n      {\"doc_id\": \"d2\", \"score\": 0.80, \"rank\": 2},\n      {\"doc_id\": \"d3\", \"score\": 0.75, \"rank\": 3}\n    ]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{evaluation_url}}/evaluate",
+              "host": ["{{evaluation_url}}"],
+              "path": ["evaluate"]
+            },
+            "description": "Step 4: Score the results with MAP, Recall, P@k, nDCG@k."
+          },
+          "response": []
+        }
+
+      ]
+    }
+
+  ],
+
+  "variable": [
+    { "key": "gateway_url",        "value": "http://localhost:8000" },
+    { "key": "preprocessing_url",  "value": "http://localhost:8001" },
+    { "key": "indexing_url",       "value": "http://localhost:8002" },
+    { "key": "retrieval_url",      "value": "http://localhost:8003" },
+    { "key": "refinement_url",     "value": "http://localhost:8005" },
+    { "key": "evaluation_url",     "value": "http://localhost:8006" }
+  ]
+}

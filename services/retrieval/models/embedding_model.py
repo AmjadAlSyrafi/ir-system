@@ -67,7 +67,10 @@ class EmbeddingModel:
         self._model = SentenceTransformer(self.model_name, device=self.device)
         self._embedding_dim = self._model.get_sentence_embedding_dimension()
         logger.info("Embedding dimension: %d.", self._embedding_dim)
-        self._init_faiss_index(self._embedding_dim)
+        # Only create a fresh index if none exists — avoids overwriting an
+        # index that was already loaded from disk via load().
+        if self._index is None:
+            self._init_faiss_index(self._embedding_dim)
 
     def _init_faiss_index(self, dim: int) -> None:
         if self.index_type == "ivf":

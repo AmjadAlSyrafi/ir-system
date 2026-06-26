@@ -30,12 +30,23 @@ _PREPROC_PATH = os.path.join(_ROOT, "services", "preprocessing")
 if _PREPROC_PATH not in sys.path:
     sys.path.append(_PREPROC_PATH)
 
-_models: Dict[str, Any] = {
-    "tfidf":     TFIDFModel(),
-    "bm25":      BM25Model(),
-    "embedding": EmbeddingModel(),
-    "hybrid":    HybridModel(),
+_KNOWN_DATASETS = os.getenv("DATASETS", "dataset1,dataset2").split(",")
+
+def _make_fresh_models() -> Dict[str, Any]:
+    return {
+        "tfidf":     TFIDFModel(),
+        "bm25":      BM25Model(),
+        "embedding": EmbeddingModel(),
+        "hybrid":    HybridModel(),
+    }
+
+# Per-dataset model stores — keyed by dataset tag e.g. "dataset1"
+_models_by_dataset: Dict[str, Dict[str, Any]] = {
+    ds.strip(): _make_fresh_models() for ds in _KNOWN_DATASETS
 }
+
+# Legacy alias kept for helpers that still reference _models directly (dataset1)
+_models = _models_by_dataset.get("dataset1", next(iter(_models_by_dataset.values())))
 
 # ---------------------------------------------------------------------------
 # Built-in sample corpus (60 IR-domain documents — no download needed)
@@ -108,12 +119,17 @@ _SAMPLE_DOCS = [
 # Startup helpers
 # ---------------------------------------------------------------------------
 
-def _models_dir() -> str:
-    dataset = os.getenv("DEFAULT_DATASET", "dataset1")
+def _dataset_models_dir(dataset: str) -> str:
     return os.path.join(_ROOT, "data", "indexes", dataset, "models")
 
 
-def _load_from_disk(models_dir: str) -> List[str]:
+def _models_dir() -> str:
+    return _dataset_models_dir(os.getenv("DEFAULT_DATASET", "dataset1"))
+
+
+def _load_from_disk(models_dir: str, models: Optional[Dict[str, Any]] = None) -> List[str]:
+    if models is None:
+        models = _models
     paths = {
         "tfidf":     os.path.join(models_dir, "tfidf.joblib"),
         "bm25":      os.path.join(models_dir, "bm25.pkl"),
@@ -124,9 +140,9 @@ def _load_from_disk(models_dir: str) -> List[str]:
     for name, path in paths.items():
         if os.path.exists(path):
             try:
-                _models[name].load(path)
+                models[name].load(path)
                 loaded.append(name)
-                logger.info("Loaded %-10s from disk.", name)
+                logger.info("[%s] Loaded %-10s from disk.", os.path.basename(os.path.dirname(models_dir)), name)
             except Exception as exc:
                 logger.warning("Could not load %s: %s", name, exc)
     return loaded
@@ -141,35 +157,37 @@ def _tokenise(preprocessor, docs: List[Dict]) -> List[Dict]:
     return [preprocessor.preprocess_document(dict(d)) for d in docs]
 
 
-def _auto_fit_sparse(save_dir: str) -> None:
-    """Fit and save TF-IDF + BM25 inline — fast, no download required."""
+def _auto_fit_sparse(save_dir: str, models: Optional[Dict[str, Any]] = None) -> None:
+    """Fit and save TF-IDF + BM25 inline using the built-in sample corpus."""
+    if models is None:
+        models = _models
     logger.info("Auto-fitting TF-IDF and BM25 with %d built-in documents…", len(_SAMPLE_DOCS))
     try:
         preprocessor  = _get_preprocessor()
         tokenised     = _tokenise(preprocessor, _SAMPLE_DOCS)
 
-        _models["tfidf"].fit(tokenised)
-        _models["bm25"].fit(tokenised)
+        models["tfidf"].fit(tokenised)
+        models["bm25"].fit(tokenised)
         logger.info("TF-IDF and BM25 fitted in memory.")
 
         os.makedirs(save_dir, exist_ok=True)
-        _models["tfidf"].save(os.path.join(save_dir, "tfidf.joblib"))
-        _models["bm25"].save(os.path.join(save_dir, "bm25.pkl"))
+        models["tfidf"].save(os.path.join(save_dir, "tfidf.joblib"))
+        models["bm25"].save(os.path.join(save_dir, "bm25.pkl"))
         logger.info("Sparse models saved to '%s'.", save_dir)
     except Exception as exc:
         logger.error("Auto-fit (sparse) failed: %s", exc)
 
 
-def _fit_embedding_and_hybrid(save_dir: str) -> None:
+def _fit_embedding_and_hybrid(save_dir: str, models: Optional[Dict[str, Any]] = None) -> None:
     """Fit embedding + hybrid in background — HybridModel.fit() handles the transformer."""
+    if models is None:
+        models = _models
     logger.info("[bg] Fitting embedding + hybrid (may download ~90 MB on first run)…")
     try:
         preprocessor = _get_preprocessor()
         tokenised    = _tokenise(preprocessor, _SAMPLE_DOCS)
         tokens_map   = {d["doc_id"]: d["tokens"] for d in tokenised}
 
-        # HybridModel.fit() calls load_model() + build_index() on its own
-        # internal EmbeddingModel — the transformer is fully ready after this.
         hyb = HybridModel()
         hyb.fit(_SAMPLE_DOCS, tokens_map)
 
@@ -177,25 +195,26 @@ def _fit_embedding_and_hybrid(save_dir: str) -> None:
         hyb.embedding.save(os.path.join(save_dir, "embedding"))
         hyb.save(os.path.join(save_dir, "hybrid"))
 
-        # Share hyb's EmbeddingModel so both models use the same live transformer.
-        _models["hybrid"]    = hyb
-        _models["embedding"] = hyb.embedding
+        models["hybrid"]    = hyb
+        models["embedding"] = hyb.embedding
         logger.info("[bg] Embedding + hybrid ready (%d docs).", len(_SAMPLE_DOCS))
 
     except Exception as exc:
         logger.error("[bg] Embedding/hybrid fit failed: %s", exc)
 
 
-def _restore_embedding_model(save_dir: str) -> None:
+def _restore_embedding_model(save_dir: str, models: Optional[Dict[str, Any]] = None) -> None:
     """Called in background when FAISS index exists on disk but transformer isn't loaded."""
+    if models is None:
+        models = _models
     logger.info("[bg] Restoring sentence-transformer from HuggingFace cache…")
     try:
-        _models["embedding"].load_model()
+        models["embedding"].load_model()
         logger.info("[bg] Sentence-transformer ready (standalone embedding).")
     except Exception as exc:
         logger.error("[bg] Failed for standalone embedding: %s", exc)
     try:
-        hyb = _models.get("hybrid")
+        hyb = models.get("hybrid")
         if hyb is not None and hasattr(hyb, "embedding"):
             hyb.embedding.load_model()
             logger.info("[bg] Sentence-transformer ready (HybridModel.embedding).")
@@ -204,23 +223,39 @@ def _restore_embedding_model(save_dir: str) -> None:
 
 
 def _try_load_models() -> None:
-    mdir   = _models_dir()
-    loaded = _load_from_disk(mdir)
+    for dataset, models in _models_by_dataset.items():
+        mdir   = _dataset_models_dir(dataset)
+        loaded = _load_from_disk(mdir, models)
 
-    # Ensure sparse models are always available immediately.
-    if "tfidf" not in loaded or "bm25" not in loaded:
-        _auto_fit_sparse(mdir)
-
-    if "embedding" not in loaded or "hybrid" not in loaded:
-        # Fit from scratch in background.
-        logger.info("Embedding/hybrid missing — starting background fit thread.")
-        t = threading.Thread(target=_fit_embedding_and_hybrid, args=(mdir,), daemon=True)
-        t.start()
-    else:
-        # FAISS index loaded from disk but sentence-transformer not restored — fix in background.
-        logger.info("All models loaded from disk: %s", loaded)
-        t = threading.Thread(target=_restore_embedding_model, args=(mdir,), daemon=True)
-        t.start()
+        if dataset == "dataset1":
+            # dataset1 auto-fits with the built-in sample corpus as a fallback
+            # so the service is always usable without running the pipeline.
+            if "tfidf" not in loaded or "bm25" not in loaded:
+                _auto_fit_sparse(mdir, models)
+            if "embedding" not in loaded or "hybrid" not in loaded:
+                logger.info("[%s] Embedding/hybrid missing — starting background fit.", dataset)
+                t = threading.Thread(
+                    target=_fit_embedding_and_hybrid, args=(mdir, models), daemon=True
+                )
+                t.start()
+            else:
+                t = threading.Thread(
+                    target=_restore_embedding_model, args=(mdir, models), daemon=True
+                )
+                t.start()
+        else:
+            # Other datasets only load from disk; missing models are a warning.
+            if not loaded:
+                logger.warning(
+                    "[%s] No models found on disk — run python run_pipeline.py to index.", dataset
+                )
+            elif "embedding" in loaded and "hybrid" in loaded:
+                t = threading.Thread(
+                    target=_restore_embedding_model, args=(mdir, models), daemon=True
+                )
+                t.start()
+            else:
+                logger.warning("[%s] Dense models missing on disk.", dataset)
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +281,7 @@ class SearchRequest(BaseModel):
     model: str = "bm25"
     top_k: int = 10
     mode: Optional[str] = None
+    dataset: str = "dataset1"
     bm25_k1: Optional[float] = None
     bm25_b: Optional[float] = None
     hybrid_bm25_weight: Optional[float] = None
@@ -272,30 +308,40 @@ class SearchResponse(BaseModel):
 
 @app.get("/health")
 def health():
-    fitted = {name: _is_fitted(_models[name]) for name in _models}
+    fitted = {
+        ds: {name: _is_fitted(m) for name, m in models.items()}
+        for ds, models in _models_by_dataset.items()
+    }
     return {"status": "ok", "service": "retrieval", "models_fitted": fitted}
 
 
 @app.post("/reload")
 def reload_models():
     _try_load_models()
-    fitted = {name: _is_fitted(_models[name]) for name in _models}
+    fitted = {
+        ds: {name: _is_fitted(m) for name, m in models.items()}
+        for ds, models in _models_by_dataset.items()
+    }
     return {"reloaded": True, "models_fitted": fitted}
 
 
 @app.get("/models")
 def list_models():
-    fitted = {name: _is_fitted(_models[name]) for name in _models}
-    return {"models": list(_models.keys()), "fitted": fitted}
+    fitted = {
+        ds: {name: _is_fitted(m) for name, m in models.items()}
+        for ds, models in _models_by_dataset.items()
+    }
+    return {"models": list(next(iter(_models_by_dataset.values())).keys()), "fitted": fitted}
 
 
 @app.post("/search", response_model=SearchResponse)
 def search(req: SearchRequest):
-    if req.model not in _models:
+    ds_models = _models_by_dataset.get(req.dataset, _models)
+    if req.model not in ds_models:
         raise HTTPException(status_code=400, detail=f"Unknown model: {req.model}")
 
     tokens = req.query_tokens if req.query_tokens else req.query.split()
-    model  = _models[req.model]
+    model  = ds_models[req.model]
 
     try:
         if req.model == "tfidf":

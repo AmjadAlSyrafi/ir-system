@@ -3,7 +3,15 @@
     "allow": [
       "PowerShell(Copy-Item \"C:\\\\Users\\\\UsEr\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-UsEr-ir-system\\\\66e41f50-7e7a-436d-aa47-864551b3ba1c\\\\scratchpad\\\\query-test-ref.html\" \"C:\\\\Users\\\\UsEr\\\\ir-system\\\\query-test-ref.html\")",
       "PowerShell($f = \"C:\\\\Users\\\\UsEr\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-UsEr-ir-system\\\\66e41f50-7e7a-436d-aa47-864551b3ba1c\\\\tasks\\\\bex3vsx0l.output\"; $lines = Get-Content $f; $total = $lines.Count; Write-Host \"Total lines: $total\"; $lines | Select-Object -Last 15)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(curl -s http://localhost:8000/reports/dataset1)",
+      "Bash(curl -s http://localhost:8003/models)",
+      "Bash(curl -s -X POST http://localhost:8003/search -H \"Content-Type: application/json\" -d '{\"query\":\"what is the capital of France\",\"model\":\"embedding\",\"dataset\":\"dataset1\",\"top_k\":3}')",
+      "Bash(curl -s -X POST http://localhost:8003/search -H \"Content-Type: application/json\" -d '{\"query\":\"who is the president\",\"model\":\"bm25\",\"dataset\":\"dataset1\",\"top_k\":3}')",
+      "Bash(curl -s -X POST http://localhost:8003/search -H \"Content-Type: application/json\" -d '{\"query\":\"paris\",\"model\":\"bm25\",\"dataset\":\"dataset2\",\"top_k\":3}')",
+      "Bash(curl -s -X POST http://localhost:8003/search -H \"Content-Type: application/json\" -d '{\"query\":\"BM25 term frequency ranking\",\"model\":\"bm25\",\"dataset\":\"dataset1\",\"top_k\":3}')",
+      "Bash(curl -s -X POST http://localhost:8003/search -H \"Content-Type: application/json\" -d '{\"query\":\"information retrieval\",\"model\":\"tfidf\",\"dataset\":\"dataset1\",\"top_k\":3}')",
+      "Bash(curl -s -X POST http://localhost:8003/search -H \"Content-Type: application/json\" -d '{\"query\":\"BM25 term frequency ranking\",\"model\":\"embedding\",\"dataset\":\"dataset1\",\"top_k\":3}')"
     ]
   }
 }

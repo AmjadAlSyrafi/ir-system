@@ -16,6 +16,7 @@ import logging
 import os
 import sys
 import time
+import urllib.request
 from typing import Dict, List
 
 # Add service directories to sys.path so local modules are importable.
@@ -321,6 +322,19 @@ def main() -> None:
         # Evaluation
         corpus_doc_ids = {d["doc_id"] for d in documents}
         _run_evaluation(dataset_name, dataset_tag, models, corpus_doc_ids, loader, preprocessor)
+
+    # Signal the retrieval service to reload the newly saved models.
+    try:
+        req = urllib.request.Request(
+            "http://localhost:8003/reload",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            logger.info("Retrieval service reloaded: %s", resp.read().decode())
+    except Exception as exc:
+        logger.warning("Could not signal retrieval service to reload (is it running?): %s", exc)
 
     print("\nPipeline complete.")
 

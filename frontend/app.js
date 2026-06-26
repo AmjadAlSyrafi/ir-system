@@ -203,7 +203,8 @@ function renderEvalTable(rows) {
   }).join("");
 }
 
-let _evalChart = null;
+let _evalChart   = null;
+let _reportChart = null;
 
 function renderEvalChart(rows) {
   const ctx = document.getElementById("eval-chart").getContext("2d");
@@ -228,6 +229,78 @@ function renderEvalChart(rows) {
       scales: { y: { beginAtZero: true, max: 1, ticks: { stepSize: 0.1 } } },
     },
   });
+}
+
+async function loadReport(dataset, btn) {
+  document.querySelectorAll(".report-tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  const loading = document.getElementById("report-loading");
+  const errEl   = document.getElementById("report-error");
+  const content = document.getElementById("report-content");
+  const meta    = document.getElementById("report-meta");
+
+  loading.classList.remove("hidden");
+  errEl.classList.add("hidden");
+  content.classList.add("hidden");
+
+  try {
+    const resp = await fetch(`${API_BASE}/reports/${dataset}`);
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({ detail: resp.statusText }));
+      throw new Error(e.detail || resp.statusText);
+    }
+    const data = await resp.json();
+    loading.classList.add("hidden");
+
+    // Populate table
+    const tbody = document.getElementById("report-table-body");
+    const METRIC_MAP = { "MAP": "MAP", "P@10": "P@10", "nDCG@10": "nDCG@10", "Recall": "Recall" };
+    tbody.innerHTML = data.rows.map(r => {
+      const best = data.rows.reduce((a, b) => parseFloat(a.MAP) >= parseFloat(b.MAP) ? a : b);
+      const isBest = r.Model === best.Model;
+      return `<tr>
+        <td><strong>${escHtml(r.Model)}</strong>${isBest ? ' <span class="best-badge">best MAP</span>' : ""}</td>
+        <td>${r.MAP ?? "—"}</td>
+        <td>${r.Recall ?? "—"}</td>
+        <td>${r["P@10"] ?? "—"}</td>
+        <td>${r["nDCG@10"] ?? "—"}</td>
+      </tr>`;
+    }).join("");
+
+    meta.textContent = `Dataset: ${data.dataset_id}  ·  ${data.rows.length} models evaluated`;
+
+    // Chart
+    if (_reportChart) _reportChart.destroy();
+    const ctx = document.getElementById("report-chart").getContext("2d");
+    const colors = ["#4361ee","#06b6d4","#10b981","#f59e0b","#ef4444"];
+    _reportChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: data.rows.map(r => r.Model),
+        datasets: [
+          { label: "MAP",     data: data.rows.map(r => parseFloat(r.MAP)     || 0), backgroundColor: colors[0] + "cc", borderColor: colors[0], borderWidth:1.5, borderRadius:4 },
+          { label: "Recall",  data: data.rows.map(r => parseFloat(r.Recall)  || 0), backgroundColor: colors[1] + "cc", borderColor: colors[1], borderWidth:1.5, borderRadius:4 },
+          { label: "nDCG@10", data: data.rows.map(r => parseFloat(r["nDCG@10"]) || 0), backgroundColor: colors[2] + "cc", borderColor: colors[2], borderWidth:1.5, borderRadius:4 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "top" },
+          title: { display: true, text: `Evaluation — ${data.dataset_id}` },
+        },
+        scales: { y: { beginAtZero: true, max: 1, ticks: { stepSize: 0.1 } } },
+      },
+    });
+
+    content.classList.remove("hidden");
+  } catch (err) {
+    loading.classList.add("hidden");
+    errEl.textContent = "Could not load report: " + err.message;
+    errEl.classList.remove("hidden");
+  }
 }
 
 function fmt(val) {
@@ -281,6 +354,7 @@ function applySettingsToUI(settings) {
 document.addEventListener("DOMContentLoaded", () => {
 
   // ── Tab switching ──────────────────────────────────────────────────────────
+  let _reportLoaded = false;
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const target = btn.dataset.tab;
@@ -290,6 +364,12 @@ document.addEventListener("DOMContentLoaded", () => {
         c.classList.toggle("hidden",  c.id !== `tab-${target}`);
       });
       btn.classList.add("active");
+      // Auto-load dataset1 report the first time the Evaluate tab is opened.
+      if (target === "evaluate" && !_reportLoaded) {
+        _reportLoaded = true;
+        const firstTabBtn = document.querySelector(".report-tab-btn[data-ds='dataset1']");
+        if (firstTabBtn) loadReport("dataset1", firstTabBtn);
+      }
     });
   });
 

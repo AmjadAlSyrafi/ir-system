@@ -203,6 +203,22 @@ def count_documents(dataset: str = "") -> Dict[str, Any]:
     return {"dataset": dataset, "count": _doc_store.count(dataset)}
 
 
+@app.get("/documents/ids", summary="Return all stored doc_ids for a dataset")
+def get_document_ids(dataset: str = "") -> Dict[str, Any]:
+    """Return the set of doc_ids in the SQLite store for a dataset.
+
+    Used by the gateway to filter evaluation queries to those whose
+    relevant documents are actually in the indexed corpus.
+    """
+    import sqlite3 as _sq
+    with _sq.connect(_doc_store.db_path) as conn:
+        rows = conn.execute(
+            "SELECT doc_id FROM documents WHERE dataset=?", (dataset,)
+        ).fetchall()
+    ids = [r[0] for r in rows]
+    return {"dataset": dataset, "count": len(ids), "doc_ids": ids}
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------

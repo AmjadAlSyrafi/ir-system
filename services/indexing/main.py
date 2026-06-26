@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 # Allow running directly from this directory.
 sys.path.insert(0, os.path.dirname(__file__))
 from indexer import InvertedIndex
+from document_store import DocumentStore
 
 load_dotenv()
 
@@ -48,6 +49,12 @@ STORAGE_PATH = os.getenv("INDEX_STORAGE_PATH", "/data/indexes")
 
 index = InvertedIndex(index_name=INDEX_NAME, storage_path=STORAGE_PATH)
 
+# Document store — resolves to <project_root>/data/indexes/documents.db
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_DB = os.path.normpath(os.path.join(_HERE, "..", "..", "data", "indexes", "documents.db"))
+_DOC_DB_PATH = os.getenv("DOCUMENT_DB_PATH", _DEFAULT_DB)
+_doc_store = DocumentStore(_DOC_DB_PATH)
+
 # ---------------------------------------------------------------------------
 # Request / response models
 # ---------------------------------------------------------------------------
@@ -56,6 +63,7 @@ index = InvertedIndex(index_name=INDEX_NAME, storage_path=STORAGE_PATH)
 class TokenisedDocument(BaseModel):
     doc_id: str
     tokens: List[str]
+    text: Optional[str] = None
 
 
 class BuildRequest(BaseModel):
@@ -65,6 +73,14 @@ class BuildRequest(BaseModel):
     index_name: Optional[str] = Field(
         None, description="Override the index name for this build."
     )
+    dataset: str = Field(
+        default="", description="Dataset tag for document store namespacing."
+    )
+
+
+class BatchLookupRequest(BaseModel):
+    doc_ids: List[str]
+    dataset: str = ""
 
 
 class BuildResponse(BaseModel):
@@ -112,6 +128,12 @@ def build_index(req: BuildRequest) -> BuildResponse:
     except Exception as exc:
         logger.exception("Index build failed.")
         raise HTTPException(status_code=500, detail=f"Build failed: {exc}") from exc
+
+    # Store original texts in the document database when provided.
+    docs_with_text = [{"doc_id": d.doc_id, "text": d.text} for d in req.documents if d.text]
+    if docs_with_text:
+        _doc_store.store(docs_with_text, req.dataset)
+        logger.info("Stored %d original texts for dataset='%s'.", len(docs_with_text), req.dataset)
 
     logger.info("Index '%s' built with %d documents.", name, index.doc_count)
     return BuildResponse(indexed=index.doc_count, index_name=name, stats=index.get_stats())
@@ -165,6 +187,20 @@ def load_index(req: LoadRequest = LoadRequest()) -> Dict[str, Any]:
         logger.exception("Unexpected error loading index.")
         raise HTTPException(status_code=500, detail=f"Load failed: {exc}") from exc
     return {"loaded": index.index_name, "stats": index.get_stats()}
+
+
+@app.post("/documents/batch", summary="Fetch original texts for a batch of document IDs")
+def batch_documents(req: BatchLookupRequest) -> Dict[str, str]:
+    """Return a mapping of doc_id → original text from the document store.
+
+    Documents that are not found are omitted from the response.
+    """
+    return _doc_store.get_batch(req.doc_ids, req.dataset)
+
+
+@app.get("/documents/count", summary="Count stored documents for a dataset")
+def count_documents(dataset: str = "") -> Dict[str, Any]:
+    return {"dataset": dataset, "count": _doc_store.count(dataset)}
 
 
 # ---------------------------------------------------------------------------

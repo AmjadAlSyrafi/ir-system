@@ -67,11 +67,18 @@ const EVAL_QRELS = [
 
 const API_BASE = "http://localhost:8000";
 
-async function apiSearch({ query, dataset, model, top_k, use_refinement, user_id, bm25_k1, bm25_b }) {
+async function apiSearch({ query, dataset, model, top_k, use_refinement, user_id,
+                           bm25_k1, bm25_b,
+                           hybrid_bm25_weight, hybrid_embedding_weight, hybrid_tfidf_weight }) {
   const body = { query, dataset, model, top_k, use_refinement, user_id };
   if (model === "bm25") {
     if (bm25_k1 !== null) body.bm25_k1 = bm25_k1;
     if (bm25_b  !== null) body.bm25_b  = bm25_b;
+  }
+  if (model === "hybrid_parallel") {
+    if (hybrid_bm25_weight      !== null) body.hybrid_bm25_weight      = hybrid_bm25_weight;
+    if (hybrid_embedding_weight !== null) body.hybrid_embedding_weight = hybrid_embedding_weight;
+    if (hybrid_tfidf_weight     !== null) body.hybrid_tfidf_weight     = hybrid_tfidf_weight;
   }
   const resp = await fetch(`${API_BASE}/search`, {
     method: "POST",
@@ -126,16 +133,42 @@ function renderResults(results) {
     container.innerHTML = `<p style="color:var(--muted);margin-top:.75rem">No results found.</p>`;
     return;
   }
-  container.innerHTML = results.map(r => {
-    const snippet = r.text ? r.text.substring(0, 200) + (r.text.length > 200 ? "…" : "") : "";
+  container.innerHTML = results.map((r, idx) => {
+    const hasText  = r.text && r.text.trim().length > 0;
+    const preview  = hasText ? escHtml(r.text.substring(0, 280)) : "";
+    const isTrunc  = hasText && r.text.length > 280;
+    const fullId   = `doc-full-${idx}`;
+    const btnId    = `doc-btn-${idx}`;
     return `
       <div class="result-card">
-        <div class="result-rank">${r.rank}</div>
-        <div class="result-doc-id">${escHtml(r.doc_id)}</div>
-        <div class="result-score">score: ${Number(r.score).toFixed(4)}</div>
-        ${snippet ? `<div class="result-snippet">${escHtml(snippet)}</div>` : ""}
+        <div class="result-header">
+          <span class="result-rank">#${r.rank}</span>
+          <span class="result-doc-id">${escHtml(r.doc_id)}</span>
+          <span class="result-score">score: ${Number(r.score).toFixed(4)}</span>
+        </div>
+        ${hasText ? `
+          <div class="result-text">
+            <span id="${fullId}-short">${preview}${isTrunc ? "…" : ""}</span>
+            ${isTrunc ? `<span id="${fullId}-full" class="hidden">${escHtml(r.text)}</span>` : ""}
+          </div>
+          ${isTrunc ? `
+          <button class="expand-btn" id="${btnId}"
+            onclick="toggleDoc('${fullId}','${btnId}')">Show full document</button>
+          ` : ""}
+        ` : `<div class="result-no-text">Full text not available — re-run pipeline to populate document store.</div>`}
       </div>`;
   }).join("");
+}
+
+function toggleDoc(fullId, btnId) {
+  const shortEl = document.getElementById(fullId + "-short");
+  const fullEl  = document.getElementById(fullId + "-full");
+  const btn     = document.getElementById(btnId);
+  if (!fullEl) return;
+  const expanded = !fullEl.classList.contains("hidden");
+  fullEl.classList.toggle("hidden", expanded);
+  shortEl.classList.toggle("hidden", !expanded);
+  btn.textContent = expanded ? "Show full document" : "Collapse";
 }
 
 function renderMeta(total, timeMs) {
@@ -158,8 +191,9 @@ function renderEvalTable(rows) {
   const tbody = document.getElementById("eval-table-body");
   tbody.innerHTML = rows.map(r => {
     const notFitted = r.MAP === null;
+    const tip = notFitted ? ` title="${escHtml(r._reason || 'Model not ready')}"` : "";
     const cell = v => notFitted
-      ? `<td style="color:var(--muted);font-style:italic">Not fitted</td>`
+      ? `<td style="color:var(--muted);font-style:italic"${tip}>Not fitted</td>`
       : `<td>${fmt(v)}</td>`;
     return `
     <tr>
@@ -259,15 +293,30 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // ── Model selector → show/hide BM25 sliders ───────────────────────────────
-  const modelSelect  = document.getElementById("model-select");
-  const bm25Params   = document.getElementById("bm25-params");
+  // ── Mode toggle (Basic / Basic+Advanced) ──────────────────────────────────
+  const modeDescs = {
+    basic:    "Core IR models only — no query refinement",
+    advanced: "Core IR models + query refinement + additional features",
+  };
+  document.querySelectorAll('input[name="search-mode"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      document.querySelectorAll(".mode-tab").forEach(t => t.classList.remove("mode-tab-active"));
+      radio.parentElement.classList.add("mode-tab-active");
+      document.getElementById("mode-desc").textContent = modeDescs[radio.value] || "";
+    });
+  });
 
-  function updateBm25Visibility() {
-    bm25Params.classList.toggle("hidden", modelSelect.value !== "bm25");
+  // ── Model selector → show/hide parameter panels ──────────────────────────
+  const modelSelect    = document.getElementById("model-select");
+  const bm25Params     = document.getElementById("bm25-params");
+  const hybridParams   = document.getElementById("hybrid-params");
+
+  function updateModelParamVisibility() {
+    bm25Params.classList.toggle("hidden",   modelSelect.value !== "bm25");
+    hybridParams.classList.toggle("hidden", modelSelect.value !== "hybrid_parallel");
   }
-  modelSelect.addEventListener("change", updateBm25Visibility);
-  updateBm25Visibility();
+  modelSelect.addEventListener("change", updateModelParamVisibility);
+  updateModelParamVisibility();
 
   // ── BM25 slider live values ────────────────────────────────────────────────
   ["bm25-k1", "bm25-b"].forEach(id => {
@@ -275,6 +324,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const val = document.getElementById(`${id}-val`);
     el.addEventListener("input", () => { val.textContent = el.value; });
   });
+
+  // ── Hybrid weight sliders live values + normalised percentages ────────────
+  function updateHybridWeightDisplay() {
+    const wB = parseFloat(document.getElementById("hybrid-bm25-w").value);
+    const wE = parseFloat(document.getElementById("hybrid-emb-w").value);
+    const wT = parseFloat(document.getElementById("hybrid-tfidf-w").value);
+    document.getElementById("hybrid-bm25-w-val").textContent   = wB.toFixed(2);
+    document.getElementById("hybrid-emb-w-val").textContent    = wE.toFixed(2);
+    document.getElementById("hybrid-tfidf-w-val").textContent  = wT.toFixed(2);
+    const total = wB + wE + wT || 1;
+    document.getElementById("hw-bm25-pct").textContent   = Math.round(wB / total * 100) + "%";
+    document.getElementById("hw-emb-pct").textContent    = Math.round(wE / total * 100) + "%";
+    document.getElementById("hw-tfidf-pct").textContent  = Math.round(wT / total * 100) + "%";
+  }
+  ["hybrid-bm25-w", "hybrid-emb-w", "hybrid-tfidf-w"].forEach(id => {
+    document.getElementById(id).addEventListener("input", updateHybridWeightDisplay);
+  });
+  updateHybridWeightDisplay();
 
   // ── Settings slider live value ─────────────────────────────────────────────
   const topkSlider = document.getElementById("setting-topk");
@@ -313,15 +380,20 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("refinement-banner").classList.add("hidden");
 
     try {
+      const mode    = document.querySelector('input[name="search-mode"]:checked').value;
+      const isHybP  = modelSelect.value === "hybrid_parallel";
       const data = await apiSearch({
         query,
-        dataset:         document.getElementById("dataset-select").value,
-        model:           modelSelect.value,
+        dataset:                  document.getElementById("dataset-select").value,
+        model:                    modelSelect.value,
         top_k,
-        use_refinement:  document.getElementById("use-refinement").checked,
-        user_id:         "default",
-        bm25_k1:         modelSelect.value === "bm25" ? parseFloat(document.getElementById("bm25-k1").value) : null,
-        bm25_b:          modelSelect.value === "bm25" ? parseFloat(document.getElementById("bm25-b").value)  : null,
+        use_refinement:           mode === "advanced",
+        user_id:                  "default",
+        bm25_k1:                  modelSelect.value === "bm25" ? parseFloat(document.getElementById("bm25-k1").value) : null,
+        bm25_b:                   modelSelect.value === "bm25" ? parseFloat(document.getElementById("bm25-b").value)  : null,
+        hybrid_bm25_weight:       isHybP ? parseFloat(document.getElementById("hybrid-bm25-w").value)  : null,
+        hybrid_embedding_weight:  isHybP ? parseFloat(document.getElementById("hybrid-emb-w").value)   : null,
+        hybrid_tfidf_weight:      isHybP ? parseFloat(document.getElementById("hybrid-tfidf-w").value) : null,
       });
 
       renderRefinementBanner(data.refinement);
@@ -353,93 +425,55 @@ document.addEventListener("DOMContentLoaded", () => {
     const evalDataset = document.getElementById("eval-dataset").value;
     const k           = 10;
     const progress    = document.getElementById("eval-progress");
-    const queryIds    = Object.keys(EVAL_QUERIES);
-    const rows        = [];
 
     setLoading("eval-btn", "eval-spinner", "eval-btn-text", true, "Run Evaluation");
     document.getElementById("eval-results").classList.add("hidden");
     progress.classList.remove("hidden");
+    progress.textContent = `Running evaluation against real ${evalDataset} queries… (this may take a minute)`;
 
     try {
-      for (const modelName of checkedModels) {
+      const resp = await fetch(`${API_BASE}/evaluate/run`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataset:     evalDataset,
+          models:      checkedModels,
+          max_queries: 20,
+          k,
+        }),
+      });
 
-        // Step 1 — run every test query through the search API
-        const results_per_query = {};
-        let   notFitted = false;
-
-        for (let i = 0; i < queryIds.length; i++) {
-          const qid       = queryIds[i];
-          const queryText = EVAL_QUERIES[qid];
-          progress.textContent =
-            `[${modelName}] Searching query ${i + 1} / ${queryIds.length}: "${queryText}"`;
-
-          try {
-            const data = await apiSearch({
-              query:          queryText,
-              dataset:        evalDataset,
-              model:          modelName,
-              top_k:          k,
-              use_refinement: false,
-              user_id:        "eval",
-              bm25_k1:        null,
-              bm25_b:         null,
-            });
-            results_per_query[qid] = data.results || [];
-          } catch (err) {
-            const msg = err.message || "";
-            const isNotReady =
-              msg.includes("not fitted") ||
-              msg.includes("not loaded")  ||
-              msg.includes("FAISS index") ||
-              msg.includes("503")         ||
-              msg.includes("Service unreachable");
-            if (isNotReady) {
-              notFitted = true;
-              break;   // no point continuing — model not ready
-            }
-            results_per_query[qid] = [];
-          }
-        }
-
-        if (notFitted) {
-          rows.push({ Model: modelName, MAP: null, Recall: null, "P@10": null, "nDCG@10": null });
-          continue;
-        }
-
-        // Step 2 — send results + qrels to evaluation service
-        progress.textContent = `[${modelName}] Computing metrics…`;
-        try {
-          const evalResult = await apiEvaluate({
-            model_name:        modelName,
-            dataset:           evalDataset,
-            results_per_query,
-            qrels:             EVAL_QRELS,
-            k,
-          });
-
-          rows.push({
-            Model:     modelName,
-            MAP:       evalResult.MAP                           ?? 0,
-            Recall:    evalResult.mean_recall                   ?? 0,
-            "P@10":    evalResult[`mean_precision_at_${k}`]     ?? 0,
-            "nDCG@10": evalResult[`mean_ndcg_at_${k}`]          ?? 0,
-          });
-        } catch (err) {
-          rows.push({ Model: modelName, MAP: 0, Recall: 0, "P@10": 0, "nDCG@10": 0 });
-          showError(`Evaluation failed for ${modelName}: ${err.message}`);
-        }
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        throw new Error(err.detail || resp.statusText);
       }
 
-      if (rows.length > 0) {
-        document.getElementById("eval-results").classList.remove("hidden");
-        renderEvalTable(rows);
-        renderEvalChart(rows);
-      }
+      const data = await resp.json();
+
+      const rows = checkedModels.map(modelName => {
+        const m = data.models[modelName];
+        if (!m || m.error) {
+          const reason = m && m.error ? m.error : "model not ready";
+          return { Model: modelName, MAP: null, Recall: null, "P@10": null, "nDCG@10": null, _reason: reason };
+        }
+        return {
+          Model:     modelName,
+          MAP:       m.MAP                         ?? 0,
+          Recall:    m.mean_recall                 ?? 0,
+          "P@10":    m[`mean_precision_at_${k}`]   ?? 0,
+          "nDCG@10": m[`mean_ndcg_at_${k}`]        ?? 0,
+        };
+      });
+
+      progress.textContent = `Evaluated ${data.num_queries} queries from ${data.dataset_id}.`;
+      document.getElementById("eval-results").classList.remove("hidden");
+      renderEvalTable(rows);
+      renderEvalChart(rows);
+
     } catch (err) {
-      showError("Evaluation error: " + err.message);
+      showError("Evaluation failed: " + err.message);
     } finally {
       setLoading("eval-btn", "eval-spinner", "eval-btn-text", false, "Run Evaluation");
-      progress.classList.add("hidden");
     }
   });
 });

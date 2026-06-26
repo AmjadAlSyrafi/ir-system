@@ -192,6 +192,9 @@ class HybridModel:
         query_text: str,
         query_tokens: List[str],
         top_k: int = 10,
+        bm25_weight: Optional[float] = None,
+        embedding_weight: Optional[float] = None,
+        tfidf_weight: Optional[float] = None,
     ) -> List[Dict]:
         """Three-way parallel retrieval with rank/score fusion.
 
@@ -225,6 +228,10 @@ class HybridModel:
         tfidf_map = {r["doc_id"]: r["score"] for r in tfidf_results}
         emb_map = {r["doc_id"]: r["score"] for r in emb_results}
 
+        w_bm25 = bm25_weight if bm25_weight is not None else self.bm25_weight
+        w_tfidf = tfidf_weight if tfidf_weight is not None else self.tfidf_weight
+        w_emb = embedding_weight if embedding_weight is not None else self.embedding_weight
+
         if self.fusion_method == "rrf":
             fused = self._reciprocal_rank_fusion(
                 [bm25_results, tfidf_results, emb_results]
@@ -232,7 +239,7 @@ class HybridModel:
         else:
             fused = self._linear_fusion(
                 [bm25_results, tfidf_results, emb_results],
-                [self.bm25_weight, self.tfidf_weight, self.embedding_weight],
+                [w_bm25, w_tfidf, w_emb],
             )
 
         # Annotate with per-model scores for transparency.
@@ -256,6 +263,9 @@ class HybridModel:
         query_tokens: List[str],
         top_k: int = 10,
         mode: Optional[str] = None,
+        bm25_weight: Optional[float] = None,
+        embedding_weight: Optional[float] = None,
+        tfidf_weight: Optional[float] = None,
     ) -> List[Dict]:
         """Retrieve documents using the configured (or overridden) mode.
 
@@ -276,7 +286,12 @@ class HybridModel:
         if effective_mode == "serial":
             return self.search_serial(query_text, query_tokens, top_k)
         if effective_mode == "parallel":
-            return self.search_parallel(query_text, query_tokens, top_k)
+            return self.search_parallel(
+                query_text, query_tokens, top_k,
+                bm25_weight=bm25_weight,
+                embedding_weight=embedding_weight,
+                tfidf_weight=tfidf_weight,
+            )
         raise ValueError(
             f"mode must be 'parallel' or 'serial', got '{effective_mode}'."
         )

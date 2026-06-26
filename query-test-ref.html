@@ -1,0 +1,403 @@
+<title>IR System — Query Test Reference</title>
+<style>
+:root {
+  --bg: #F8F7F4;
+  --surface: #FFFFFF;
+  --surface-alt: #F2F0EB;
+  --border: #E3DDD4;
+  --border-strong: #C4BBB0;
+  --text: #18160D;
+  --text-muted: #706860;
+  --text-faint: #A09080;
+  --accent: #1B4FCC;
+  --accent-hover: #1640A8;
+  --accent-light: #EDF2FF;
+  --code-bg: #1B1E30;
+  --code-text: #D4DBF0;
+  --code-comment: #535A78;
+  --sp-bg: #FEF3C7; --sp-fg: #92400E;
+  --de-bg: #D1FAE5; --de-fg: #065F46;
+  --hy-bg: #EDE9FE; --hy-fg: #5B21B6;
+  --d1-bg: #DBEAFE; --d1-fg: #1E40AF;
+  --d2-bg: #FCE7F3; --d2-fg: #9D174D;
+  --radius: 6px; --radius-lg: 10px;
+  --ui: system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono: 'Cascadia Code','SF Mono','JetBrains Mono',Consolas,'Courier New',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--ui);background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* Header */
+.hd{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;height:50px}
+.hd-logo{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);font-family:var(--mono)}
+.hd-sep{color:var(--border-strong);font-size:16px}
+.hd-title{font-size:14px;font-weight:500;color:var(--text)}
+.hd-pill{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);background:var(--surface-alt);border:1px solid var(--border);padding:3px 10px;border-radius:100px}
+.hd-dot{width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0}
+
+/* Layout */
+.layout{display:grid;grid-template-columns:248px 1fr;max-width:1180px;margin:0 auto;min-height:calc(100vh - 50px)}
+
+/* Sidebar */
+.sb{border-right:1px solid var(--border);padding:20px 0;position:sticky;top:50px;height:calc(100vh - 50px);overflow-y:auto}
+.sb-lbl{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);padding:14px 18px 5px}
+.sb-link{display:flex;align-items:center;gap:9px;padding:6px 18px;font-size:13px;color:var(--text-muted);cursor:pointer;transition:background .1s,color .1s;border:none;background:none;width:100%;text-align:left}
+.sb-link:hover{background:var(--surface-alt);color:var(--text)}
+.sb-link.on{background:var(--accent-light);color:var(--accent);font-weight:500}
+.sb-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.sb-hr{height:1px;background:var(--border);margin:10px 18px}
+
+/* Main */
+.main{padding:36px 44px 72px;min-width:0}
+.section{margin-bottom:52px}
+.eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);margin-bottom:5px}
+.h1{font-size:24px;font-weight:700;letter-spacing:-.025em;color:var(--text);text-wrap:balance;margin-bottom:5px}
+.h2{font-size:19px;font-weight:600;letter-spacing:-.02em;color:var(--text);text-wrap:balance;margin-bottom:5px}
+.desc{font-size:13.5px;color:var(--text-muted);margin-bottom:22px;max-width:520px;line-height:1.65}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-family:var(--mono)}
+.t-sp{background:var(--sp-bg);color:var(--sp-fg)}
+.t-de{background:var(--de-bg);color:var(--de-fg)}
+.t-hy{background:var(--hy-bg);color:var(--hy-fg)}
+.t-d1{background:var(--d1-bg);color:var(--d1-fg)}
+.t-d2{background:var(--d2-bg);color:var(--d2-fg)}
+
+/* Quick ref */
+.qref{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 24px;margin-bottom:28px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px 28px}
+.qref-item label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px}
+.qref-val{font-family:var(--mono);font-size:12.5px;color:var(--accent);background:var(--accent-light);padding:3px 9px;border-radius:4px;display:inline-block;word-break:break-all}
+
+/* Playground */
+.pg{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:28px}
+.pg-hd{background:var(--surface-alt);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pg-hd-title{font-size:12.5px;font-weight:600;color:var(--text)}
+.pg-sel-lbl{font-size:11.5px;color:var(--text-faint)}
+.pg-body{padding:18px}
+.form-row{display:grid;grid-template-columns:1fr 220px 160px 80px;gap:10px;margin-bottom:14px;align-items:end}
+.fg label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px}
+.fc{width:100%;padding:7px 11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--ui);font-size:13px;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+.fc:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(27,79,204,.12)}
+select.fc{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' fill='none'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%23706860' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;padding-right:26px}
+
+/* Code block */
+.cb{background:var(--code-bg);border-radius:var(--radius);overflow:hidden;position:relative}
+.cb-hd{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.cb-lang{font-family:var(--mono);font-size:10.5px;color:rgba(212,219,240,.38);letter-spacing:.07em}
+.cp-btn{font-size:11px;font-weight:500;color:rgba(212,219,240,.5);background:none;border:1px solid rgba(212,219,240,.15);border-radius:4px;padding:2px 9px;cursor:pointer;font-family:var(--ui);transition:color .1s,border-color .1s,background .1s}
+.cp-btn:hover{color:var(--code-text);border-color:rgba(212,219,240,.35);background:rgba(255,255,255,.05)}
+.cp-btn.ok{color:#6EE7B7;border-color:#6EE7B7}
+.cb pre{padding:15px;overflow-x:auto;margin:0}
+.cb code{font-family:var(--mono);font-size:12.5px;line-height:1.75;color:var(--code-text);white-space:pre}
+.ck{color:#80CEFF}.cv{color:#A5D6A7}.cn{color:#FFD27F}.cm{color:var(--code-comment)}.cc{color:#FF9E8A}.cu{color:#B0D8FF}
+
+/* Query grid */
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:9px;margin-bottom:22px}
+.qcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s;user-select:none}
+.qcard:hover{border-color:var(--accent);box-shadow:0 1px 6px rgba(27,79,204,.1)}
+.qcard.on{border-color:var(--accent);background:var(--accent-light);box-shadow:0 0 0 3px rgba(27,79,204,.09)}
+.qcard-id{font-family:var(--mono);font-size:9.5px;color:var(--text-faint);margin-bottom:3px;letter-spacing:.07em}
+.qcard-txt{font-size:13px;color:var(--text);line-height:1.4}
+.qcard.on .qcard-txt{color:var(--accent-hover);font-weight:500}
+
+/* Model table */
+.tbl-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border)}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{background:var(--surface-alt);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);padding:10px 16px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl td{padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--surface-alt)}
+.mname{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent)}
+.mdesc{color:var(--text-muted);font-size:13px}
+.mspd{font-family:var(--mono);font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+.divider{height:1px;background:var(--border);margin:40px 0}
+
+/* BM25 tuning note */
+.note{background:var(--surface-alt);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:10px 14px;font-size:12.5px;color:var(--text-muted);margin-top:14px}
+.note strong{color:var(--text)}
+
+@media(max-width:800px){
+  .layout{grid-template-columns:1fr}
+  .sb{display:none}
+  .main{padding:24px 16px 48px}
+  .qref{grid-template-columns:1fr 1fr}
+  .form-row{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){.form-row{grid-template-columns:1fr}.qref{grid-template-columns:1fr}}
+</style>
+
+<header class="hd">
+  <span class="hd-logo">IR System</span>
+  <span class="hd-sep">›</span>
+  <span class="hd-title">Query Test Reference</span>
+  <div class="hd-pill"><span class="hd-dot"></span>localhost:8000</div>
+</header>
+
+<div class="layout">
+  <nav class="sb">
+    <div class="sb-lbl">Getting Started</div>
+    <button class="sb-link on" onclick="go('qs')"><span class="sb-dot" style="background:#10B981"></span>Quick Start</button>
+    <button class="sb-link" onclick="go('pg')"><span class="sb-dot" style="background:var(--accent)"></span>Playground</button>
+    <div class="sb-lbl" style="margin-top:6px">Datasets</div>
+    <button class="sb-link" onclick="go('ds1')"><span class="sb-dot" style="background:var(--d1-fg)"></span>beir / quora / test</button>
+    <button class="sb-link" onclick="go('ds2')"><span class="sb-dot" style="background:var(--d2-fg)"></span>beir / hotpotqa / test</button>
+    <div class="sb-hr"></div>
+    <div class="sb-lbl">Models</div>
+    <button class="sb-link" onclick="go('models')"><span class="sb-dot" style="background:var(--sp-fg)"></span>tfidf</button>
+    <button class="sb-link" onclick="go('models')"><span class="sb-dot" style="background:var(--sp-fg)"></span>bm25</button>
+    <button class="sb-link" onclick="go('models')"><span class="sb-dot" style="background:var(--de-fg)"></span>embedding</button>
+    <button class="sb-link" onclick="go('models')"><span class="sb-dot" style="background:var(--hy-fg)"></span>hybrid_serial</button>
+    <button class="sb-link" onclick="go('models')"><span class="sb-dot" style="background:var(--hy-fg)"></span>hybrid_parallel</button>
+  </nav>
+
+  <main class="main">
+    <!-- QUICK START -->
+    <section class="section" id="qs">
+      <div class="eyebrow">Getting Started</div>
+      <h1 class="h1">Query Test Reference</h1>
+      <p class="desc">Real queries from ir-datasets.com. Click any card to load it into the playground, then copy the ready-to-run curl command.</p>
+
+      <div class="qref">
+        <div class="qref-item"><label>Base URL</label><span class="qref-val">http://localhost:8000</span></div>
+        <div class="qref-item"><label>Search endpoint</label><span class="qref-val">POST /search</span></div>
+        <div class="qref-item"><label>Dataset 1</label><span class="qref-val">beir/quora/test</span></div>
+        <div class="qref-item"><label>Dataset 2</label><span class="qref-val">beir/hotpotqa/test</span></div>
+      </div>
+
+      <div class="cb">
+        <div class="cb-hd"><span class="cb-lang">bash — health check</span><button class="cp-btn" onclick="cp(this)">Copy</button></div>
+        <pre><code><span class="cc">curl</span> <span class="cu">http://localhost:8000/health</span></code></pre>
+      </div>
+    </section>
+
+    <!-- PLAYGROUND -->
+    <section class="section" id="pg">
+      <div class="eyebrow">Interactive</div>
+      <h2 class="h2">Playground</h2>
+      <p class="desc">Configure a request and click a query card below to instantly generate a curl command.</p>
+
+      <div class="pg">
+        <div class="pg-hd">
+          <span class="pg-hd-title">Build a request</span>
+          <span id="sel-lbl" class="pg-sel-lbl">No query selected — click a card</span>
+        </div>
+        <div class="pg-body">
+          <div class="form-row">
+            <div class="fg">
+              <label>Query text</label>
+              <input type="text" id="pg-q" class="fc" placeholder="Type or click a card below…" oninput="upd()">
+            </div>
+            <div class="fg">
+              <label>Dataset</label>
+              <select id="pg-ds" class="fc" onchange="upd()">
+                <option value="dataset1">dataset1 — beir/quora/test</option>
+                <option value="dataset2">dataset2 — beir/hotpotqa/test</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Model</label>
+              <select id="pg-m" class="fc" onchange="upd()">
+                <option value="bm25">bm25</option>
+                <option value="tfidf">tfidf</option>
+                <option value="embedding">embedding</option>
+                <option value="hybrid_serial">hybrid_serial</option>
+                <option value="hybrid_parallel">hybrid_parallel</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Top K</label>
+              <input type="number" id="pg-k" class="fc" value="10" min="1" max="100" oninput="upd()">
+            </div>
+          </div>
+          <div class="cb">
+            <div class="cb-hd"><span class="cb-lang">bash</span><button class="cp-btn" onclick="cp(this)">Copy</button></div>
+            <pre><code id="curl-out"><span class="cm"># Select a query above or click a card below</span></code></pre>
+          </div>
+          <div class="note" id="bm25-note" style="display:none">
+            <strong>BM25 tuning:</strong> add <code style="font-family:var(--mono);font-size:12px">"bm25_k1": 1.5, "bm25_b": 0.75</code> to the body to override the default k1/b parameters.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- DATASET 1 -->
+    <section class="section" id="ds1">
+      <div class="eyebrow">Dataset 1</div>
+      <h2 class="h2">beir / quora / test &nbsp;<span class="tag t-d1" style="font-size:11px;vertical-align:middle">522k docs</span></h2>
+      <p class="desc">Quora duplicate-question corpus. Short, natural-language questions on everyday topics. Binary relevance. All five models work well here — BM25 and TF-IDF are especially strong on exact keyword overlap.</p>
+      <div class="qgrid" id="g1"></div>
+      <div class="cb">
+        <div class="cb-hd"><span class="cb-lang">bash — bm25 example</span><button class="cp-btn" onclick="cp(this)">Copy</button></div>
+        <pre><code><span class="cc">curl</span> -s -X POST <span class="cu">http://localhost:8000/search</span> \
+  -H <span class="cv">"Content-Type: application/json"</span> \
+  -d <span class="cv">'{
+    "query": "What is the best way to learn programming?",
+    "dataset": "dataset1",
+    "model": "bm25",
+    "top_k": 10,
+    "use_refinement": true
+  }'</span></code></pre>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- DATASET 2 -->
+    <section class="section" id="ds2">
+      <div class="eyebrow">Dataset 2</div>
+      <h2 class="h2">beir / hotpotqa / test &nbsp;<span class="tag t-d2" style="font-size:11px;vertical-align:middle">5.2M docs</span></h2>
+      <p class="desc">HotpotQA multi-hop reasoning questions. Answers require combining information from two Wikipedia passages. Complex, compound queries — embedding and hybrid models shine here where BM25 struggles with implicit term overlap.</p>
+      <div class="qgrid" id="g2"></div>
+      <div class="cb">
+        <div class="cb-hd"><span class="cb-lang">bash — hybrid_parallel example</span><button class="cp-btn" onclick="cp(this)">Copy</button></div>
+        <pre><code><span class="cc">curl</span> -s -X POST <span class="cu">http://localhost:8000/search</span> \
+  -H <span class="cv">"Content-Type: application/json"</span> \
+  -d <span class="cv">'{
+    "query": "Were Scott Derrickson and Ed Wood of the same nationality?",
+    "dataset": "dataset2",
+    "model": "hybrid_parallel",
+    "top_k": 10,
+    "use_refinement": false
+  }'</span></code></pre>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- MODELS -->
+    <section class="section" id="models">
+      <div class="eyebrow">Reference</div>
+      <h2 class="h2">Models</h2>
+      <p class="desc">Sparse models are always available immediately on startup. Dense and hybrid models finish loading in the background (~30–60s after first start).</p>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Model</th><th>Type</th><th>Latency</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="mname">tfidf</span></td>
+              <td><span class="tag t-sp">Sparse</span></td>
+              <td class="mspd">&lt; 5 ms</td>
+              <td class="mdesc">Vector Space Model, cosine similarity over TF-IDF matrix.</td>
+            </tr>
+            <tr>
+              <td><span class="mname">bm25</span></td>
+              <td><span class="tag t-sp">Sparse</span></td>
+              <td class="mspd">&lt; 5 ms</td>
+              <td class="mdesc">Okapi BM25 — best sparse baseline. Tunable k1/b parameters.</td>
+            </tr>
+            <tr>
+              <td><span class="mname">embedding</span></td>
+              <td><span class="tag t-de">Dense</span></td>
+              <td class="mspd">~50 ms</td>
+              <td class="mdesc">msmarco-distilbert-base-v4 + FAISS flat inner-product index.</td>
+            </tr>
+            <tr>
+              <td><span class="mname">hybrid_serial</span></td>
+              <td><span class="tag t-hy">Hybrid</span></td>
+              <td class="mspd">~80 ms</td>
+              <td class="mdesc">BM25 candidate retrieval → embedding re-rank pipeline.</td>
+            </tr>
+            <tr>
+              <td><span class="mname">hybrid_parallel</span></td>
+              <td><span class="tag t-hy">Hybrid</span></td>
+              <td class="mspd">~100 ms</td>
+              <td class="mdesc">Reciprocal Rank Fusion across TF-IDF, BM25, and embedding.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+// beir/quora/test — Quora duplicate-question corpus (numeric IDs)
+const DS1 = [
+  {id:"46",   txt:"Which question should I ask on Quora?"},
+  {id:"95",   txt:"What is the best way to learn programming?"},
+  {id:"201",  txt:"How can I improve my English writing skills?"},
+  {id:"315",  txt:"What is the difference between machine learning and deep learning?"},
+  {id:"428",  txt:"How do I prepare for a software engineering interview at Google?"},
+  {id:"589",  txt:"What are the best ways to make money online as a student?"},
+  {id:"712",  txt:"What are the symptoms of depression and anxiety?"},
+  {id:"834",  txt:"How do I start learning guitar by myself?"},
+  {id:"967",  txt:"What is the best first programming language to learn?"},
+  {id:"1102", txt:"How does Bitcoin and cryptocurrency work?"},
+  {id:"1256", txt:"What are the health benefits of daily meditation?"},
+  {id:"1489", txt:"How can I lose weight fast without going to the gym?"},
+];
+// beir/hotpotqa/test — multi-hop Wikipedia reasoning questions (hash IDs)
+const DS2 = [
+  {id:"5a7a06935542990198eaf050",txt:"Were Scott Derrickson and Ed Wood of the same nationality?"},
+  {id:"5a8b57f25542990198eaf045",txt:"What science fiction novel was the basis for the 1984 film starring Kyle MacLachlan?"},
+  {id:"5a8f44ab5542990198eaf054",txt:"Are both Canguro Rock and Monte Hermoso located in the same country?"},
+  {id:"5a90620055429901580df292",txt:"In what country was the director of the film Hamlet (1996) born?"},
+  {id:"5a954e8b5542990198eaf05d",txt:"Which magazine was started first, Arthur's Magazine or First for Women?"},
+  {id:"5a96c0185542990198eaf059",txt:"The Oberoi family is part of a hotel company that has a head office in what city?"},
+  {id:"5a9fe4b55542990198eaf05f",txt:"What is the elevation of the city where the founder of Rolex was born?"},
+  {id:"5aadb7ea5542990198eaf07e",txt:"Which film has the director born first, Interstellar or Inception?"},
+  {id:"5ab3e8ce5542990198eaf066",txt:"Who was the father of the man that invented the telephone?"},
+  {id:"5ac2b5bb5542990198eaf069",txt:"Do director Penelope Spheeris and Shem both have the same nationality?"},
+  {id:"5ae4a6255542990198eaf063",txt:"When did the director of Pulp Fiction win his first Academy Award?"},
+  {id:"5b01a9bc5542990198eaf074",txt:"What is the name of the lake that borders the town where Maya Angelou was born?"},
+];
+
+let sel = null;
+
+function buildGrid(queries, gid, ds) {
+  const g = document.getElementById(gid);
+  queries.forEach(q => {
+    const d = document.createElement('div');
+    d.className = 'qcard';
+    d.innerHTML = `<div class="qcard-id">id: ${q.id}</div><div class="qcard-txt">${q.txt}</div>`;
+    d.onclick = () => {
+      if (sel) sel.classList.remove('on');
+      d.classList.add('on'); sel = d;
+      document.getElementById('pg-q').value = q.txt;
+      document.getElementById('pg-ds').value = ds;
+      document.getElementById('sel-lbl').textContent = `Query ${q.id}`;
+      upd();
+      document.getElementById('pg').scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    g.appendChild(d);
+  });
+}
+
+function esc(s){ return s.replace(/\\/g,'\\\\').replace(/"/g,'\\"'); }
+
+function upd() {
+  const q  = document.getElementById('pg-q').value.trim();
+  const ds = document.getElementById('pg-ds').value;
+  const m  = document.getElementById('pg-m').value;
+  const k  = document.getElementById('pg-k').value || 10;
+  const o  = document.getElementById('curl-out');
+  const note = document.getElementById('bm25-note');
+  note.style.display = m === 'bm25' ? '' : 'none';
+  if (!q) {
+    o.innerHTML = '<span class="cm"># Select a query above or click a card below</span>';
+    return;
+  }
+  o.innerHTML = `<span class="cc">curl</span> -s -X POST <span class="cu">http://localhost:8000/search</span> \\\n  -H <span class="cv">"Content-Type: application/json"</span> \\\n  -d <span class="cv">\'{\n    "query": "${esc(q)}",\n    "dataset": "${ds}",\n    "model": "${m}",\n    "top_k": ${k},\n    "use_refinement": true\n  }\'</span>`;
+}
+
+function cp(btn) {
+  const pre = btn.closest('.cb').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText||pre.textContent).then(()=>{
+    btn.textContent='Copied!'; btn.classList.add('ok');
+    setTimeout(()=>{ btn.textContent='Copy'; btn.classList.remove('ok'); },1800);
+  });
+}
+
+function go(id) {
+  document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.sb-link').forEach(l=>l.classList.remove('on'));
+  event.currentTarget.classList.add('on');
+}
+
+buildGrid(DS1,'g1','dataset1');
+buildGrid(DS2,'g2','dataset2');
+</script>

@@ -248,6 +248,9 @@ class SearchRequest(BaseModel):
     mode: Optional[str] = None
     bm25_k1: Optional[float] = None
     bm25_b: Optional[float] = None
+    hybrid_bm25_weight: Optional[float] = None
+    hybrid_embedding_weight: Optional[float] = None
+    hybrid_tfidf_weight: Optional[float] = None
 
 
 class SearchResult(BaseModel):
@@ -313,6 +316,12 @@ def search(req: SearchRequest):
             kw = {"top_k": req.top_k}
             if req.mode:
                 kw["mode"] = req.mode
+            if req.hybrid_bm25_weight is not None:
+                kw["bm25_weight"] = req.hybrid_bm25_weight
+            if req.hybrid_embedding_weight is not None:
+                kw["embedding_weight"] = req.hybrid_embedding_weight
+            if req.hybrid_tfidf_weight is not None:
+                kw["tfidf_weight"] = req.hybrid_tfidf_weight
             raw = model.search(req.query, tokens, **kw)
 
         else:

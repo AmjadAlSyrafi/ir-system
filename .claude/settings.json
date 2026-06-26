@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\UsEr\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-UsEr-ir-system\\\\66e41f50-7e7a-436d-aa47-864551b3ba1c\\\\scratchpad\\\\query-test-ref.html\" \"C:\\\\Users\\\\UsEr\\\\ir-system\\\\query-test-ref.html\")",
+      "PowerShell($f = \"C:\\\\Users\\\\UsEr\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-UsEr-ir-system\\\\66e41f50-7e7a-436d-aa47-864551b3ba1c\\\\tasks\\\\bex3vsx0l.output\"; $lines = Get-Content $f; $total = $lines.Count; Write-Host \"Total lines: $total\"; $lines | Select-Object -Last 15)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}

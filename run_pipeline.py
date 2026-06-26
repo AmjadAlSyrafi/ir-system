@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.join(_ROOT, "services", "evaluation"))
 from dataset_loader import DatasetLoader               # noqa: E402
 from preprocessor import TextPreprocessor              # noqa: E402
 from indexer import InvertedIndex                      # noqa: E402
+from document_store import DocumentStore               # noqa: E402
 from models.tfidf_model import TFIDFModel              # noqa: E402
 from models.bm25_model import BM25Model                # noqa: E402
 from models.embedding_model import EmbeddingModel      # noqa: E402
@@ -50,9 +51,12 @@ DATA_DIR       = os.path.join(_ROOT, "data")
 INDEX_DIR      = os.path.join(DATA_DIR, "indexes")
 DATASET_DIR    = os.path.join(DATA_DIR, "datasets")
 EVAL_REPORT    = os.path.join(DATA_DIR, "evaluation_report.md")
+DOC_DB_PATH    = os.path.join(INDEX_DIR, "documents.db")
 
 for _d in (INDEX_DIR, DATASET_DIR):
     os.makedirs(_d, exist_ok=True)
+
+_doc_store = DocumentStore(DOC_DB_PATH)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -239,8 +243,8 @@ def _run_evaluation(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="IR system end-to-end pipeline")
-    parser.add_argument("--dataset1", default="msmarco-passage")
-    parser.add_argument("--dataset2", default="beir/nq/train")
+    parser.add_argument("--dataset1", default="beir/quora/test")
+    parser.add_argument("--dataset2", default="beir/hotpotqa/test")
     parser.add_argument(
         "--sample_size",
         type=int,
@@ -298,6 +302,10 @@ def main() -> None:
 
         # Build inverted index
         _build_and_save_index(dataset_tag, documents)
+
+        # Store original texts in SQLite document database
+        stored = _doc_store.store(documents, dataset_tag)
+        logger.info("[%s] Stored %d documents in SQLite at '%s'.", dataset_tag, stored, DOC_DB_PATH)
 
         # Fit or load models
         if args.skip_fitting:

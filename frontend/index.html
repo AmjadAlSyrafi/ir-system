@@ -33,8 +33,8 @@
 
       <div class="search-controls">
         <select id="dataset-select" title="Dataset">
-          <option value="dataset1">Dataset 1 — MS MARCO</option>
-          <option value="dataset2">Dataset 2 — NQ</option>
+          <option value="dataset1">Dataset 1 — Quora</option>
+          <option value="dataset2">Dataset 2 — HotpotQA</option>
         </select>
 
         <select id="model-select" title="Model">
@@ -54,11 +54,19 @@
         </div>
       </div>
 
-      <div class="search-options">
-        <label class="checkbox-label">
-          <input type="checkbox" id="use-refinement" checked />
-          Use Query Refinement
-        </label>
+      <div class="mode-bar">
+        <span class="mode-bar-label">Mode:</span>
+        <div class="mode-tabs">
+          <label class="mode-tab mode-tab-active">
+            <input type="radio" name="search-mode" value="basic" checked />
+            Basic
+          </label>
+          <label class="mode-tab">
+            <input type="radio" name="search-mode" value="advanced" />
+            Basic + Advanced
+          </label>
+        </div>
+        <span id="mode-desc" class="mode-desc">Core IR models only</span>
       </div>
 
       <!-- BM25 sliders (shown only when model=bm25) -->
@@ -76,6 +84,40 @@
             <input type="range" id="bm25-b" min="0.0" max="1.0" step="0.05" value="0.75" />
             <span id="bm25-b-val" class="slider-value">0.75</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Hybrid fusion weight sliders (shown only for hybrid_parallel) -->
+      <div id="hybrid-params" class="bm25-params hidden">
+        <div class="hybrid-params-header">
+          <span>Fusion Weights</span>
+          <span class="param-desc">(linear combination — values are auto-normalised)</span>
+        </div>
+        <div class="slider-row">
+          <label for="hybrid-bm25-w">BM25 <span class="param-desc">(lexical)</span></label>
+          <div class="slider-control">
+            <input type="range" id="hybrid-bm25-w" min="0" max="1" step="0.05" value="0.4" />
+            <span id="hybrid-bm25-w-val" class="slider-value">0.40</span>
+          </div>
+        </div>
+        <div class="slider-row">
+          <label for="hybrid-emb-w">Embedding <span class="param-desc">(semantic)</span></label>
+          <div class="slider-control">
+            <input type="range" id="hybrid-emb-w" min="0" max="1" step="0.05" value="0.4" />
+            <span id="hybrid-emb-w-val" class="slider-value">0.40</span>
+          </div>
+        </div>
+        <div class="slider-row">
+          <label for="hybrid-tfidf-w">TF-IDF <span class="param-desc">(term frequency)</span></label>
+          <div class="slider-control">
+            <input type="range" id="hybrid-tfidf-w" min="0" max="1" step="0.05" value="0.2" />
+            <span id="hybrid-tfidf-w-val" class="slider-value">0.20</span>
+          </div>
+        </div>
+        <div id="hybrid-weight-note" class="hybrid-weight-note">
+          BM25: <strong id="hw-bm25-pct">40%</strong> &nbsp;|&nbsp;
+          Embedding: <strong id="hw-emb-pct">40%</strong> &nbsp;|&nbsp;
+          TF-IDF: <strong id="hw-tfidf-pct">20%</strong>
         </div>
       </div>
 
@@ -99,8 +141,8 @@
         <div class="form-group">
           <label>Dataset</label>
           <select id="eval-dataset">
-            <option value="dataset1">Dataset 1 — MS MARCO</option>
-            <option value="dataset2">Dataset 2 — NQ</option>
+            <option value="dataset1">Dataset 1 — Quora</option>
+            <option value="dataset2">Dataset 2 — HotpotQA</option>
           </select>
         </div>
         <div class="form-group">

@@ -39,12 +39,13 @@ RETRIEVAL_URL     = os.getenv("RETRIEVAL_URL",     "http://localhost:8003")
 REFINEMENT_URL    = os.getenv("QUERY_REFINEMENT_URL", "http://localhost:8005")
 EVALUATION_URL    = os.getenv("EVALUATION_URL",    "http://localhost:8006")
 
-_TIMEOUT = httpx.Timeout(60.0)
+_TIMEOUT      = httpx.Timeout(60.0)
+_EVAL_TIMEOUT = httpx.Timeout(300.0)
 
 AVAILABLE_MODELS = ["tfidf", "bm25", "embedding", "hybrid_serial", "hybrid_parallel"]
 AVAILABLE_DATASETS = {
-    "dataset1": "msmarco-passage/dev/small",
-    "dataset2": "beir/nq/train",
+    "dataset1": "beir/quora/test",
+    "dataset2": "beir/hotpotqa/test",
 }
 
 # ---------------------------------------------------------------------------
@@ -127,6 +128,9 @@ class SearchRequest(BaseModel):
     user_id: str = "default"
     bm25_k1: Optional[float] = None
     bm25_b: Optional[float] = None
+    hybrid_bm25_weight: Optional[float] = None
+    hybrid_embedding_weight: Optional[float] = None
+    hybrid_tfidf_weight: Optional[float] = None
 
 
 class IndexBuildRequest(BaseModel):
@@ -139,6 +143,13 @@ class EvaluateRequest(BaseModel):
     results_per_query: Dict[str, List[Dict[str, Any]]]
     qrels: List[Dict[str, Any]]
     k: int = 10
+
+
+class RunEvalRequest(BaseModel):
+    dataset: str = Field(default="dataset1", description="'dataset1' or 'dataset2'")
+    models: List[str] = Field(default=["bm25"], description="List of model names to evaluate")
+    max_queries: int = Field(default=20, ge=1, le=200)
+    k: int = Field(default=10, ge=1, le=100)
 
 # ---------------------------------------------------------------------------
 # Endpoints
@@ -251,6 +262,12 @@ async def search(req: SearchRequest) -> Dict[str, Any]:
             retrieval_body["bm25_k1"] = req.bm25_k1
         if req.bm25_b is not None:
             retrieval_body["bm25_b"] = req.bm25_b
+        if req.hybrid_bm25_weight is not None:
+            retrieval_body["hybrid_bm25_weight"] = req.hybrid_bm25_weight
+        if req.hybrid_embedding_weight is not None:
+            retrieval_body["hybrid_embedding_weight"] = req.hybrid_embedding_weight
+        if req.hybrid_tfidf_weight is not None:
+            retrieval_body["hybrid_tfidf_weight"] = req.hybrid_tfidf_weight
 
         try:
             retrieval_resp = await _post(
@@ -268,6 +285,23 @@ async def search(req: SearchRequest) -> Dict[str, Any]:
                 ) from exc
             raise
 
+        # Enrich results with full original text from the document store.
+        results: List[Dict[str, Any]] = retrieval_resp.get("results", [])
+        if results:
+            try:
+                doc_ids = [r["doc_id"] for r in results]
+                doc_resp = await client.post(
+                    f"{INDEXING_URL}/documents/batch",
+                    json={"doc_ids": doc_ids, "dataset": req.dataset},
+                    timeout=httpx.Timeout(10.0),
+                )
+                if doc_resp.status_code == 200:
+                    texts: Dict[str, str] = doc_resp.json()
+                    for r in results:
+                        r["text"] = texts.get(r["doc_id"], "")
+            except Exception as exc:
+                logger.warning("Could not fetch document texts: %s", exc)
+
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
     return {
         "query": req.query,
@@ -277,7 +311,7 @@ async def search(req: SearchRequest) -> Dict[str, Any]:
         "dataset": req.dataset,
         "top_k": req.top_k,
         "time_ms": elapsed_ms,
-        "results": retrieval_resp.get("results", []),
+        "results": results,
     }
 
 
@@ -375,19 +409,20 @@ async def build_index(req: IndexBuildRequest) -> Dict[str, Any]:
                 tokenised_docs.append({
                     "doc_id": resp.get("doc_id", doc["doc_id"]),
                     "tokens": resp.get("tokens", doc["text"].lower().split()),
+                    "text": doc["text"],
                 })
             except HTTPException:
-                # Fallback: simple whitespace tokenisation if preprocessing fails
                 tokenised_docs.append({
                     "doc_id": doc["doc_id"],
                     "tokens": doc["text"].lower().split(),
+                    "text": doc["text"],
                 })
 
-        # Step 2 — build inverted index
+        # Step 2 — build inverted index (also stores texts in document DB)
         index_resp = await _post(
             client,
             f"{INDEXING_URL}/index/build",
-            {"documents": tokenised_docs},
+            {"documents": tokenised_docs, "dataset": req.dataset},
         )
 
         # Step 3 — tell retrieval service to reload (best-effort)
@@ -413,6 +448,120 @@ async def evaluate(req: EvaluateRequest) -> Dict[str, Any]:
             req.model_dump(),
         )
     return resp
+
+
+@app.post("/evaluate/run", summary="Server-side evaluation against real dataset qrels")
+async def run_evaluation(req: RunEvalRequest) -> Dict[str, Any]:
+    """Fetch real queries + qrels from the dataset, run all requested models,
+    and return metrics — no client-side qrels needed.
+    """
+    if req.dataset not in AVAILABLE_DATASETS:
+        raise HTTPException(400, f"Unknown dataset '{req.dataset}'.")
+    for m in req.models:
+        if m not in AVAILABLE_MODELS:
+            raise HTTPException(400, f"Unknown model '{m}'.")
+
+    dataset_id = AVAILABLE_DATASETS[req.dataset]   # e.g. "antique/test"
+
+    async with httpx.AsyncClient() as client:
+        # 1. Fetch real queries + qrels from preprocessing service
+        try:
+            es_resp = await client.get(
+                f"{PREPROCESSING_URL}/dataset/{dataset_id}/eval-set",
+                params={"max_queries": req.max_queries},
+                timeout=_EVAL_TIMEOUT,
+            )
+            es_resp.raise_for_status()
+        except Exception as exc:
+            raise HTTPException(502, f"Could not load eval set: {exc}") from exc
+
+        eval_set = es_resp.json()
+        queries: Dict[str, str] = eval_set["queries"]
+        qrels: List[Dict[str, Any]] = eval_set["qrels"]
+
+        if not queries:
+            raise HTTPException(404, "No queries with relevance judgements found for this dataset.")
+
+        model_metrics: Dict[str, Any] = {}
+
+        for raw_model in req.models:
+            retrieval_model = raw_model
+            hybrid_mode: Optional[str] = None
+            if raw_model == "hybrid_serial":
+                retrieval_model = "hybrid"
+                hybrid_mode = "serial"
+            elif raw_model == "hybrid_parallel":
+                retrieval_model = "hybrid"
+                hybrid_mode = "parallel"
+
+            results_per_query: Dict[str, List[Dict[str, Any]]] = {}
+            not_ready_msg: Optional[str] = None
+
+            for qid, query_text in queries.items():
+                try:
+                    # Preprocess query
+                    pre = await _post(
+                        client,
+                        f"{PREPROCESSING_URL}/preprocess/query",
+                        {"query_text": query_text},
+                    )
+                    query_tokens: List[str] = pre.get("tokens", [])
+
+                    # Retrieve
+                    body: Dict[str, Any] = {
+                        "query": query_text,
+                        "query_tokens": query_tokens,
+                        "model": retrieval_model,
+                        "top_k": req.k,
+                    }
+                    if hybrid_mode:
+                        body["mode"] = hybrid_mode
+
+                    search_resp = await client.post(
+                        f"{RETRIEVAL_URL}/search",
+                        json=body,
+                        timeout=_EVAL_TIMEOUT,
+                    )
+                    search_resp.raise_for_status()
+                    results_per_query[qid] = search_resp.json().get("results", [])
+                except httpx.HTTPStatusError as exc:
+                    detail = exc.response.text
+                    _NOT_READY = ("not fitted", "not loaded", "faiss", "initializ", "503")
+                    if any(kw in detail.lower() for kw in _NOT_READY) or exc.response.status_code in (503, 425):
+                        not_ready_msg = detail[:200]
+                        break
+                    results_per_query[qid] = []
+                except Exception:
+                    results_per_query[qid] = []
+
+            if not_ready_msg:
+                model_metrics[raw_model] = {"error": f"Model not ready: {not_ready_msg}"}
+                continue
+
+            # Compute metrics
+            try:
+                eval_resp = await _post(
+                    client,
+                    f"{EVALUATION_URL}/evaluate",
+                    {
+                        "model_name": raw_model,
+                        "dataset": req.dataset,
+                        "results_per_query": results_per_query,
+                        "qrels": qrels,
+                        "k": req.k,
+                    },
+                )
+                model_metrics[raw_model] = eval_resp
+            except Exception as exc:
+                model_metrics[raw_model] = {"error": str(exc)}
+
+    return {
+        "dataset": req.dataset,
+        "dataset_id": dataset_id,
+        "num_queries": len(queries),
+        "k": req.k,
+        "models": model_metrics,
+    }
 
 
 # ---------------------------------------------------------------------------

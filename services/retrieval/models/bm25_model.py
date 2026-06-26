@@ -5,6 +5,7 @@ Supports per-query k1/b overrides and term-level score explanation
 for UI parameter visualisation.
 """
 
+import bz2
 import logging
 import math
 import pickle
@@ -250,9 +251,9 @@ class BM25Model:
             "doc_ids": self._doc_ids,
             "tokenised_corpus": self._tokenised_corpus,
         }
-        with open(path, "wb") as fh:
+        with bz2.open(path, "wb") as fh:
             pickle.dump(payload, fh, protocol=pickle.HIGHEST_PROTOCOL)
-        logger.info("BM25 model saved to '%s'.", path)
+        logger.info("BM25 model saved (bz2-compressed) to '%s'.", path)
 
     def load(self, path: str) -> None:
         """Deserialise a previously saved model from *path*.
@@ -266,8 +267,13 @@ class BM25Model:
         import os
         if not os.path.exists(path):
             raise FileNotFoundError(f"Model file not found: '{path}'")
-        with open(path, "rb") as fh:
-            payload = pickle.load(fh)
+        try:
+            with bz2.open(path, "rb") as fh:
+                payload = pickle.load(fh)
+        except OSError:
+            # Fall back to uncompressed format for legacy files.
+            with open(path, "rb") as fh:
+                payload = pickle.load(fh)
         self.k1 = payload["k1"]
         self.b = payload["b"]
         self._bm25 = payload["bm25"]

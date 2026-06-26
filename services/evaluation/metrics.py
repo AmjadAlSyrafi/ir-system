@@ -7,6 +7,7 @@ a ``doc_id`` key, as returned by the retrieval service models.
 
 import logging
 import math
+import os
 from typing import Dict, List, Optional
 
 import numpy as np

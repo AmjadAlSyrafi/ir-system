@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
+from dataset_loader import DatasetLoader
 from preprocessor import TextPreprocessor
 
 load_dotenv()
@@ -33,6 +34,8 @@ app = FastAPI(
     version="2.0.0",
     description="Text preprocessing pipeline for the IR system.",
 )
+
+_loader = DatasetLoader()
 
 _preprocessor = TextPreprocessor(
     language=os.getenv("PREPROCESS_LANGUAGE", "english"),
@@ -181,6 +184,41 @@ def preprocess_query(req: QueryRequest) -> QueryResponse:
         ) from exc
 
     return QueryResponse(**result)
+
+
+# ---------------------------------------------------------------------------
+# Dataset eval-set endpoint
+# ---------------------------------------------------------------------------
+
+@app.get("/dataset/{name:path}/eval-set", tags=["dataset"])
+def get_eval_set(name: str, max_queries: int = 20):
+    """Return a sample of real queries and qrels for evaluation."""
+    try:
+        queries = {q["query_id"]: q["text"] for q in _loader.load_queries(name)}
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    try:
+        qrels_dict = _loader.load_qrels(name)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    valid_qids = [
+        qid for qid, docs in qrels_dict.items()
+        if qid in queries and any(r > 0 for r in docs.values())
+    ][:max_queries]
+
+    qrels_list = [
+        {"query_id": qid, "doc_id": did, "relevance": rel}
+        for qid in valid_qids
+        for did, rel in qrels_dict[qid].items()
+        if rel > 0
+    ]
+
+    return {
+        "queries": {qid: queries[qid] for qid in valid_qids},
+        "qrels": qrels_list,
+        "num_queries": len(valid_qids),
+    }
 
 
 # ---------------------------------------------------------------------------
